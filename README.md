@@ -1,4 +1,4 @@
-# 🐱 Cat Monitor API
+# 🐱 Cat API
 
 A Node.js API built with Hono for monitoring and controlling locally Tuya-based smart cat feeders. This API provides comprehensive meal plan management, feeding controls, and real-time device monitoring.
 
@@ -21,8 +21,8 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/uplg/catit-api.git
-   cd cat-monitor
+   git clone https://github.com/uplg/cat-api.git
+   cd cat-api
    ```
 
 2. **Install dependencies**
