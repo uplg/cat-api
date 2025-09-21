@@ -13,7 +13,7 @@ const app = new Elysia().use(
   openapi({
     documentation: {
       info: {
-        title: "🐱 Cat Monitor API",
+        title: "🐱 Cat API",
         version: "1.0.0",
         description: "Multi-device API for cat feeders and litter boxes",
       },
@@ -46,7 +46,7 @@ const deviceManager = new DeviceManager();
 // 🏠 Root Endpoint
 app.get("/", () => {
   return {
-    message: "🐱 Cat Monitor API",
+    message: "🐱 Cat API",
     version: "1.0.0",
     description: "Multi-device API for cat feeders and litter boxes",
     endpoints: [
