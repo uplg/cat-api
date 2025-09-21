@@ -63,7 +63,7 @@ app.route("/devices", createLitterBoxRoutes(deviceManager));
 const port = Number(process.env.PORT || 3000);
 console.log(`🚀 Server started on http://localhost:${port}`);
 
-serve({
-  fetch: app.fetch,
+export default {
   port,
-});
+  fetch: app.fetch,
+};

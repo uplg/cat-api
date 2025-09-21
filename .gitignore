@@ -56,5 +56,7 @@ jspm_packages/
 .DS_Store
 Thumbs.db
 
+dist
 # API config
 devices.json
+server

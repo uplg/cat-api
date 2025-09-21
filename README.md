@@ -121,7 +121,21 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
 
 The API will be available at `http://localhost:3000`
 
-## 📚 API Endpoints
+### Docker (deployment)
+
+Build the Docker image:
+
+```bash
+docker build -t cat-api .
+```
+
+Run the container:
+
+```bash
+docker run -p 3000:3000 cat-api
+```
+
+### 📚 API Endpoints
 
 ### 🏠 General
 

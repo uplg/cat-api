@@ -7,29 +7,24 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target node",
-    "type-check": "tsc --noEmit"
+    "build": "bun build src/index.ts --compile --outfile server"
   },
   "keywords": [
     "tuya",
     "catit",
     "smart-feeder",
+    "smart-litter-box",
     "hono",
     "api"
   ],
-  "author": "Leonard",
+  "author": "Uplg",
   "license": "MIT",
   "dependencies": {
-    "@hono/node-server": "^1.19.3",
-    "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "hono": "^4.9.8",
-    "tuyapi": "github:codetheweb/tuyapi"
+    "tuyapi": "^7.7.1"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/node": "^22.15.1",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "@types/node": "^22.15.1"
   }
 }
