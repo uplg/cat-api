@@ -10,7 +10,7 @@ COPY . ./
 
 RUN bun build src/index.ts --compile --outfile server
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 WORKDIR /app
 
