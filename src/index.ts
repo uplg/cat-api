@@ -207,6 +207,10 @@ app.post("/meal-plan", async (c) => {
       );
     }
 
+    if (body.meal_plan.length > 10) {
+      console.warn("This may fail as max supported are 10 meal plans");
+    }
+
     for (let i = 0; i < body.meal_plan.length; i++) {
       const entry = body.meal_plan[i];
       if (!MealPlan.validate(entry)) {

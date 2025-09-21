@@ -55,7 +55,7 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
 
    Then use the API Explorer > Device management > Query device details, paste your device id (got from devices list under your project), and you should see the device details including the localkey.
 
-   (Note: The localkey changes each time the iot device is reset or removed from your SmartLife account.)
+   **Note**: The localkey changes each time the iot device is reset or removed from your SmartLife account.
 
 4. **Start the server**
    ```bash
@@ -93,10 +93,10 @@ curl -X POST http://localhost:3000/feed
 
 ### 🗓️ Meal Plan Management
 
-| Method | Endpoint     | Description           |
-| ------ | ------------ | --------------------- |
-| `GET`  | `/meal-plan` | Get current meal plan |
-| `POST` | `/meal-plan` | Set new meal plan     |
+| Method | Endpoint     | Description                      |
+| ------ | ------------ | -------------------------------- |
+| `GET`  | `/meal-plan` | Get current meal plan            |
+| `POST` | `/meal-plan` | Set new meal plan (max 10 plans) |
 
 **Set Meal Plan Example:**
 
