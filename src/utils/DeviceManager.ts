@@ -1,4 +1,4 @@
-import TuyAPI from "tuyapi";
+import TuyAPI, { DPSObject } from "tuyapi";
 import fs from "fs";
 import path from "path";
 
@@ -225,7 +225,7 @@ export class DeviceManager {
     }
   }
 
-  async getDeviceStatus(deviceId: string): Promise<any> {
+  async getDeviceStatus(deviceId: string): Promise<DPSObject> {
     const device = this.devices.get(deviceId);
     if (!device) {
       throw new Error(`Device ${deviceId} not found`);
@@ -235,7 +235,7 @@ export class DeviceManager {
       await this.connectDevice(deviceId);
     }
 
-    const response = await device.api.get({ schema: true });
+    const response = (await device.api.get({ schema: true })) as DPSObject;
 
     device.api.disconnect();
 
