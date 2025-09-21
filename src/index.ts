@@ -49,12 +49,12 @@ app.get("/", (c) => {
     message: "Feeder API for Pixi smart cat feeder",
     endpoints: [
       "POST /feed - Send manual_feed with value: 1 (DPS 3)",
-      "GET /scan-dps - Scan all available DPS to find detailed data",
       "GET /feed-history - Get detailed feeding history (DPS 104)",
       "POST /meal-plan - Set new meal plan (DPS 1)",
       "POST /start-listening - Start persistent connection to listen for device reports",
       "POST /stop-listening - Stop persistent connection",
       "GET /listening-status - Check if currently listening for reports",
+      "GET /scan-dps - Scan DPS range (params: ?start=1&end=255&timeout=100)",
     ],
   });
 });
@@ -93,46 +93,6 @@ app.post("/feed", async (c) => {
       },
       500
     );
-  }
-});
-
-// @debug
-app.get("/scan-dps", async (c) => {
-  try {
-    await device.connect();
-
-    console.log("🔍 Scanning all DPS...");
-
-    const dpsResults: any = {};
-    const dpsToScan = [1, 2, 3, 9, 15, 101, 102, 103, 104, 105, 106, 107, 108];
-
-    for (const dps of dpsToScan) {
-      try {
-        console.warn(`scanning dps ${dps}`);
-        const value = await device.get({ dps });
-        if (value !== undefined && value !== null) {
-          dpsResults[dps] = value;
-          console.log(`📊 DPS ${dps}:`, JSON.stringify(value));
-        }
-      } catch (e) {
-        console.warn(`error dps ${dps}`, e);
-      }
-    }
-
-    device.disconnect();
-
-    return c.json({
-      success: true,
-      available_dps: dpsResults,
-      total_found: Object.keys(dpsResults).length,
-      message: "DPS scan completed",
-    });
-  } catch (error) {
-    console.error("❌ Error scanning DPS:", error);
-
-    device.disconnect();
-
-    return c.json({ success: false, error: "Failed to scan DPS" }, 500);
   }
 });
 
@@ -336,6 +296,81 @@ app.get("/listening-status", (c) => {
     is_listening: isListening,
     status: isListening ? "Listening for device reports" : "Not listening",
   });
+});
+
+// @note: debug
+app.get("/scan-dps", async (c) => {
+  const query = c.req.query();
+  const startDps = parseInt(query.start || "1");
+  const endDps = parseInt(query.end || "255");
+  const timeout = parseInt(query.timeout || "3000");
+
+  try {
+    await device.connect();
+
+    console.log(
+      `🔍 Scanning DPS range ${startDps}-${endDps} (timeout: ${timeout}ms per DPS)...`
+    );
+
+    const dpsResults: any = {};
+    const errors: any = {};
+    let scannedCount = 0;
+    let foundCount = 0;
+
+    for (let dps = startDps; dps <= endDps; dps++) {
+      scannedCount++;
+      try {
+        console.log(
+          `🔍 Scanning DPS ${dps}... (${scannedCount}/${endDps - startDps + 1})`
+        );
+
+        // Add timeout to prevent hanging on non-existent DPS
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), timeout)
+        );
+
+        const value = await Promise.race([device.get({ dps }), timeoutPromise]);
+
+        if (value !== undefined && value !== null) {
+          dpsResults[dps] = {
+            value: value,
+            type: typeof value,
+            length: typeof value === "string" ? value.length : undefined,
+          };
+          foundCount++;
+          console.log(
+            `✅ DPS ${dps}:`,
+            JSON.stringify(value).substring(0, 100) +
+              (JSON.stringify(value).length > 100 ? "..." : "")
+          );
+        }
+      } catch (e) {
+        errors[dps] = e instanceof Error ? e.message : "Unknown error";
+        if (e instanceof Error && !e.message.includes("Timeout")) {
+          console.warn(`❌ DPS ${dps}:`, e.message);
+        }
+      }
+    }
+
+    device.disconnect();
+
+    return c.json({
+      success: true,
+      scan_range: `${startDps}-${endDps}`,
+      scanned_count: scannedCount,
+      found_count: foundCount,
+      available_dps: dpsResults,
+      errors_count: Object.keys(errors).length,
+      errors: Object.keys(errors).length > 0 ? errors : undefined,
+      message: `DPS scan completed: ${foundCount} active DPS found out of ${scannedCount} scanned`,
+    });
+  } catch (error) {
+    console.error("❌ Error scanning DPS:", error);
+
+    device.disconnect();
+
+    return c.json({ success: false, error: "Failed to scan DPS" }, 500);
+  }
 });
 
 const port = Number(process.env.PORT || 3000);

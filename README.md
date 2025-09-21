@@ -74,9 +74,10 @@ The API will be available at `http://localhost:3000`
 
 ### 🍽️ Feeding Control
 
-| Method | Endpoint | Description            |
-| ------ | -------- | ---------------------- |
-| `POST` | `/feed`  | Trigger manual feeding |
+| Method | Endpoint        | Description              |
+| ------ | --------------- | ------------------------ |
+| `POST` | `/feed`         | Trigger manual feeding   |
+| `GET`  | `/feed-history` | Get last feeding history |
 
 **Example (1 portion):**
 
@@ -92,12 +93,29 @@ curl -X POST http://localhost:3000/feed \
   -d '{"portion": 2}'
 ```
 
-### 📊 Device Information
+**Get feeding history:**
 
-| Method | Endpoint        | Description                                              |
-| ------ | --------------- | -------------------------------------------------------- |
-| `GET`  | `/scan-dps`     | Scan all available device data points (may need changes) |
-| `GET`  | `/feed-history` | Get detailed feeding history                             |
+```bash
+curl http://localhost:3000/feed-history
+```
+
+**Response example:**
+
+```json
+{
+  "success": true,
+  "feed_history": {
+    "raw": "R:0  C:1  T:1758453557",
+    "parsed": {
+      "remaining": "0",
+      "count": "1",
+      "timestamp": "1758453557",
+      "timestamp_readable": "2025-09-21T11:19:17.000Z"
+    }
+  },
+  "message": "Feed history retrieved and analyzed"
+}
+```
 
 ### 🗓️ Meal Plan Management
 
@@ -141,6 +159,56 @@ curl -X POST http://localhost:3000/meal-plan \
 
 ```bash
 curl -X POST http://localhost:3000/start-listening
+```
+
+### 📊 Device Information
+
+| Method | Endpoint    | Description                                     |
+| ------ | ----------- | ----------------------------------------------- |
+| `GET`  | `/scan-dps` | Scan device data points with configurable range |
+
+#### DPS Scanning Options
+
+The `/scan-dps` endpoint supports query parameters for flexible scanning:
+
+| Parameter | Default | Description                     |
+| --------- | ------- | ------------------------------- |
+| `start`   | `1`     | Starting DPS number             |
+| `end`     | `255`   | Ending DPS number               |
+| `timeout` | `3000`  | Timeout per DPS in milliseconds |
+
+**Examples:**
+
+```bash
+# Full scan (default: DPS 1-255, 3000ms timeout)
+curl http://localhost:3000/scan-dps
+
+# Quick scan of common DPS range
+curl "http://localhost:3000/scan-dps?start=1&end=120&timeout=1000"
+```
+
+**Response Format:**
+
+```json
+{
+  "success": true,
+  "scan_range": "1-255",
+  "scanned_count": 255,
+  "found_count": 5,
+  "available_dps": {
+    "3": {
+      "value": 1,
+      "type": "number"
+    },
+    "104": {
+      "value": "R:0  C:1  T:1758453557",
+      "type": "string",
+      "length": 22
+    }
+  },
+  "errors_count": 0,
+  "message": "DPS scan completed: 2 active DPS found out of 255 scanned"
+}
 ```
 
 ## 📋 Meal Plan Format
@@ -202,7 +270,13 @@ curl -X POST http://localhost:3000/feed
 ### Check Device Status
 
 ```bash
+# Full device scan (may take longer)
 curl http://localhost:3000/scan-dps
+
+# Quick device discovery
+curl "http://localhost:3000/scan-dps?start=1&end=150&timeout=1000"
+
+
 ```
 
 ## 🔍 Troubleshooting
@@ -213,16 +287,22 @@ curl http://localhost:3000/scan-dps
 
    - Verify device IP address and network connectivity
    - Check if device is powered on and connected to WiFi
-   - Ensure firewall allows connections on the specified port
+   - If that worked before a disconnect error might have occured, restart the API, else it's probably a wrong protocol version (3.3 instead of 3.4 as an example)
 
-2. **Invalid Credentials**
+2. **Invalid Credentials | ECONNRESET**
 
    - Double-check `TUYA_DEVICE_ID` and `TUYA_DEVICE_KEY`
    - Verify device version (usually 3.4 or 3.5 for feeder devices)
 
 3. **Meal Plan Not Reading**
+
    - The device may not have a meal plan retrieved yet, DPS don't expose the raw data so we need to update (and then it's saved on instance)
    - Try setting a meal plan first using the POST endpoint
+
+4. **DPS Scan Taking Too Long**
+   - Use smaller ranges: `?start=1&end=50` instead of full scan
+   - Reduce timeout: `?timeout=1000` for faster scanning
+   - Target known DPS ranges for your device type
 
 ### Debug Mode
 
