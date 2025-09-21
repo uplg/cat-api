@@ -102,9 +102,6 @@ export class DeviceManager {
           this.handleDeviceData(deviceInstance, data);
         });
 
-        // Setup data listener for this device
-        this.setupDataListener(deviceInstance);
-
         this.devices.set(config.id, deviceInstance);
         console.log(`📱 Registered device: ${config.name} (${deviceType})`);
       } catch (error) {
@@ -123,6 +120,8 @@ export class DeviceManager {
             `🍽️ Meal plan reported by ${device.config.name}:`,
             data.dps["1"]
           );
+          // If DPS 1 (meal plan) is updated, cache it
+          this.setMealPlan(device.config.id, data.dps["1"]);
         }
         if (data.dps["3"]) {
           console.log(
@@ -255,17 +254,5 @@ export class DeviceManager {
   clearMealPlan(deviceId: string): void {
     this.mealPlanCache.delete(deviceId);
     console.log(`🗑️ Cleared meal plan cache for device ${deviceId}`);
-  }
-
-  // Setup data listener for meal plan updates
-  private setupDataListener(device: DeviceInstance): void {
-    device.api.on("data", (data: any) => {
-      console.log(`📊 Device ${device.config.id} data:`, data);
-
-      // If DPS 1 (meal plan) is updated, cache it
-      if (data.dps && data.dps["1"]) {
-        this.setMealPlan(device.config.id, data.dps["1"]);
-      }
-    });
   }
 }
