@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import TuyAPI from "tuyapi";
 import dotenv from "dotenv";
+import { MealPlan } from "./MealPlan";
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ app.get("/", (c) => {
       "POST /feed - Send manual_feed with value: 1 (DPS 3)",
       "GET /scan-dps - Scan all available DPS to find detailed data",
       "GET /feed-history - Get detailed feeding history (DPS 104)",
+      "GET /meal-plan - Get current meal plan (DPS 101)",
+      "POST /meal-plan - Set new meal plan (DPS 101)",
     ],
   });
 });
@@ -144,6 +147,155 @@ app.get("/feed-history", async (c) => {
   } catch (error) {
     console.error("❌ Error getting feed history:", error);
     return c.json({ success: false, error: "Failed to get feed history" }, 500);
+  }
+});
+
+// @todo: not working atm
+app.get("/meal-plan", async (c) => {
+  try {
+    await device.connect();
+
+    console.log("Testing DPS 1 specifically for meal plan...");
+
+    let mealPlanData;
+    try {
+      mealPlanData = await device.get({ dps: 1 });
+      console.log("DPS 1 raw value:", mealPlanData);
+      console.log("DPS 1 type:", typeof mealPlanData);
+      console.log("DPS 1 length:", mealPlanData?.length);
+    } catch (error) {
+      console.error("Error getting DPS 1:", error);
+      device.disconnect();
+      return c.json(
+        {
+          success: false,
+          error: "Cannot access DPS 1",
+          details: error instanceof Error ? error.message : "Unknown error",
+        },
+        500
+      );
+    }
+
+    device.disconnect();
+
+    const isValidBase64 =
+      typeof mealPlanData === "string" &&
+      mealPlanData.length > 0 &&
+      /^[A-Za-z0-9+/]*={0,2}$/.test(mealPlanData);
+
+    if (!mealPlanData || !isValidBase64) {
+      return c.json(
+        {
+          success: false,
+          error: "DPS 1 does not contain valid Base64 meal plan data",
+          dps_1_value: mealPlanData,
+          data_type: typeof mealPlanData,
+          is_valid_base64: isValidBase64,
+          debug_info:
+            "DPS 1 should contain Base64 encoded meal plan according to device spec",
+        },
+        400
+      );
+    }
+
+    try {
+      const decodedMealPlan = MealPlan.decode(mealPlanData);
+      const formattedPlan = MealPlan.format(decodedMealPlan);
+
+      return c.json({
+        success: true,
+        original_base64: mealPlanData,
+        decoded_meal_plan: decodedMealPlan,
+        formatted_display: formattedPlan,
+        total_meals: decodedMealPlan.length,
+        message: "Meal plan retrieved successfully",
+      });
+    } catch (decodeError) {
+      return c.json(
+        {
+          success: false,
+          error: "Failed to decode meal plan from DPS 1",
+          dps_1_value: mealPlanData,
+          decode_error:
+            decodeError instanceof Error
+              ? decodeError.message
+              : "Unknown decode error",
+        },
+        500
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error getting meal plan:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to get meal plan",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+app.post("/meal-plan", async (c) => {
+  try {
+    const body = await c.req.json();
+
+    if (!body.meal_plan || !Array.isArray(body.meal_plan)) {
+      return c.json(
+        {
+          success: false,
+          error: "meal_plan array is required",
+        },
+        400
+      );
+    }
+
+    for (let i = 0; i < body.meal_plan.length; i++) {
+      const entry = body.meal_plan[i];
+      if (!MealPlan.validate(entry)) {
+        return c.json(
+          {
+            success: false,
+            error: `Invalid meal plan entry at index ${i}`,
+            entry: entry,
+          },
+          400
+        );
+      }
+    }
+
+    const encodedMealPlan = MealPlan.encode(body.meal_plan);
+    console.log("📊 Encoded meal plan:", encodedMealPlan);
+
+    await device.connect();
+
+    console.log("📊 Setting new meal plan...");
+
+    await device.set({ dps: 1, set: encodedMealPlan } as any);
+
+    device.disconnect();
+
+    const formattedPlan = MealPlan.format(body.meal_plan);
+
+    return c.json({
+      success: true,
+      meal_plan: body.meal_plan,
+      formatted_display: formattedPlan,
+      encoded_base64: encodedMealPlan,
+      total_meals: body.meal_plan.length,
+      message: "Meal plan updated successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error setting meal plan:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to set meal plan",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
   }
 });
 
