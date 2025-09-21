@@ -1,30 +1,40 @@
 # 🐱 Cat API
 
-A Node.js API built with Hono for monitoring and controlling locally Tuya-based smart cat feeders / automatic litters. This API provides comprehensive meal plan management, feeding controls, litter status and real-time device monitoring.
+A Node.js multi-device API built with Hono for monitoring and controlling locally Tuya-based smart cat feeders and automatic litter boxes. This API provides comprehensive device management, meal plan control, litter monitoring, and real-time device scanning across multiple devices simultaneously.
 
 ## 🚀 Features
 
-### Feeders :
+### 📱 Multi-Device Management
 
-- **Meal Plan Management**: Create, read, and update feeding schedules with Base64 encoding/decoding
-- **Manual Feeding**: Trigger immediate feeding sessions
-- **Feed History**: Retrieve detailed feeding logs (only last one, you need to save it somewhere to get an history like in the SmartLife app)
+- **Device Status**: Real-time status monitoring for all connected devices
+- **Connection Management**: Connect/disconnect all devices or individual devices
+- **Device Types**: Support for feeders and litter boxes with type-specific endpoints
 
-### Litters :
+### 🍽️ Smart Feeder Control
 
-- **Litter Status**: Get current litter box status (e.g., litter level, cleaning in progress)
-- **Basic litter management**: Start cleaning process
+- **Meal Plan Management**: Create, read, and update feeding schedules with Base64 encoding/decoding and caching
+- **Manual Feeding**: Trigger immediate feeding sessions with customizable portions
+- **Feed History**: Retrieve detailed feeding logs with parsed timestamps and portion tracking
+- **Multi-Feeder Support**: Manage multiple feeders independently
 
-### Analysis :
+### 🚽 Litter Box Monitoring
 
-- **Real-time Monitoring**: Listen for device reports and feeding activities
-- **Device Scanning**: Discover available device data points (DPS)
+- **Comprehensive Status**: Monitor litter level, cleaning cycles, sensor data, and system state
+- **Smart Controls**: Trigger cleaning cycles, configure sleep modes, and adjust settings
+- **Sensor Analytics**: Track defecation frequency, duration, and maintenance alerts
+- **Preference Management**: Control lighting, sounds, child lock, and kitten mode
+
+### 🔍 Advanced Diagnostics
+
+- **DPS Scanning**: Discover available device data points with configurable ranges and timeouts
+- **Real-time Monitoring**: Live device data updates and event tracking
+- **Device Analytics**: Comprehensive device information and capability discovery
 
 ## 📋 Prerequisites
 
 - Node.js 22+
-- A Tuya-compatible smart cat feeder and/or a smart (automatic) litter
-- Device credentials (ID, Key, IP, Port)
+- One or more Tuya-compatible smart cat feeders and/or automatic litter boxes
+- Device credentials (ID, Key, IP) for each device
 
 ## 🛠️ Installation
 
@@ -41,33 +51,69 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
    npm install
    ```
 
-3. **Environment setup**
+3. **Device Configuration**
+
+   Create a `devices.json` file in the root directory with your device configurations:
+
+   ```json
+   [
+     {
+       "name": "Pixi Smart Feeder",
+       "id": "your_feeder_device_id",
+       "key": "your_feeder_device_key",
+       "category": "cwwsq",
+       "product_name": "Pixi Smart Feeder",
+       "ip": "192.168.1.174",
+       "version": "3.4"
+     },
+     {
+       "name": "Cat Litter Box",
+       "id": "your_litter_device_id",
+       "key": "your_litter_device_key",
+       "category": "msp",
+       "product_name": "Cat Litter Box",
+       "ip": "192.168.1.145",
+       "version": "3.5"
+     }
+   ]
+   ```
+
+   **Device Configuration Fields:**
+
+   - `name`: Friendly name for your device
+   - `id`: Tuya device ID
+   - `key`: Tuya device local key
+   - `category`: Device category (cwwsq for feeders, msp for litter boxes)
+   - `product_name`: Product name from Tuya
+   - `ip`: Local IP address of the device
+   - `version`: Tuya protocol version (usually 3.4 or 3.5)
+
+4. **Environment Setup (Optional)**
 
    ```bash
    cp .env.example .env
    ```
 
-   Configure your `.env` file with your device credentials:
+   Configure your `.env` file for server settings:
 
    ```env
-   TUYA_DEVICE_ID=your_device_id
-   TUYA_DEVICE_KEY=your_device_key
-   TUYA_DEVICE_IP=your_device_ip
-   TUYA_DEVICE_PORT=6668
-   TUYA_DEVICE_VERSION=3.4
    # API Server port
    PORT=3000
    ```
 
-   To retrieve the device key (aka localkey) you need an account on Tuya cloud (free), create there : https://iot.tuya.com
+5. **Getting Device Credentials**
 
-   Then you need to create a project, define the correct datacenter and add your device to it, the simplest way is to scan the QRCode using Smart Life app.
+   To retrieve device credentials, you need a Tuya Cloud account (free):
 
-   Then use the API Explorer > Device management > Query device details, paste your device id (got from devices list under your project), and you should see the device details including the localkey.
+   1. Create an account at https://iot.tuya.com
+   2. Create a project and select the correct datacenter
+   3. Add your devices (easiest way: scan QR code with Smart Life app)
+   4. Use API Explorer > Device Management > Query device details
+   5. Get the device ID from the devices list and retrieve the local key
 
-   **Note**: The localkey changes each time the iot device is reset or removed from your SmartLife account.
+   **Note**: The local key changes when the device is reset or removed from Smart Life.
 
-4. **Start the server**
+6. **Start the server**
    ```bash
    npm start
    ```
@@ -82,62 +128,112 @@ The API will be available at `http://localhost:3000`
 | ------ | -------- | --------------------------------------- |
 | `GET`  | `/`      | API information and available endpoints |
 
-### 🍽️ Feeding Control
+### 📱 Device Management
 
-| Method | Endpoint        | Description              |
-| ------ | --------------- | ------------------------ |
-| `POST` | `/feed`         | Trigger manual feeding   |
-| `GET`  | `/feed-history` | Get last feeding history |
+| Method | Endpoint                | Description                   |
+| ------ | ----------------------- | ----------------------------- |
+| `GET`  | `/devices`              | List all configured devices   |
+| `POST` | `/devices/connect`      | Connect to all devices        |
+| `POST` | `/devices/disconnect`   | Disconnect from all devices   |
+| `GET`  | `/devices/:id/status`   | Get specific device status    |
+| `GET`  | `/devices/:id/scan-dps` | Scan device data points (DPS) |
 
-**Example (1 portion):**
-
-```bash
-curl -X POST http://localhost:3000/feed
-```
-
-**Example with custom portion (max 12):**
+#### List All Devices
 
 ```bash
-curl -X POST http://localhost:3000/feed \
-  -H "Content-Type: application/json" \
-  -d '{"portion": 2}'
+curl http://localhost:3000/devices
 ```
 
-**Get feeding history:**
-
-```bash
-curl http://localhost:3000/feed-history
-```
-
-**Response example:**
+**Response:**
 
 ```json
 {
   "success": true,
+  "devices": [
+    {
+      "id": "bfa64c250eb410189dy9gq",
+      "name": "Pixi Smart Feeder",
+      "type": "feeder",
+      "product_name": "Pixi Smart Feeder",
+      "model": "43752-022",
+      "ip": "192.168.1.174",
+      "version": "3.4",
+      "connected": false,
+      "last_data": {}
+    }
+  ],
+  "total": 1,
+  "message": "Devices list retrieved successfully"
+}
+```
+
+#### Connect/Disconnect Devices
+
+```bash
+# Connect all devices
+curl -X POST http://localhost:3000/devices/connect
+
+# Disconnect all devices
+curl -X POST http://localhost:3000/devices/disconnect
+```
+
+### 🍽️ Feeder Control (Multi-Device)
+
+| Method | Endpoint                        | Description                    |
+| ------ | ------------------------------- | ------------------------------ |
+| `POST` | `/devices/:id/feeder/feed`      | Trigger manual feeding         |
+| `GET`  | `/devices/:id/feeder/history`   | Get feeding history            |
+| `GET`  | `/devices/:id/feeder/meal-plan` | Get current meal plan (cached) |
+| `POST` | `/devices/:id/feeder/meal-plan` | Set new meal plan              |
+
+#### Manual Feeding
+
+```bash
+# Feed 1 portion (default)
+curl -X POST http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/feed
+
+# Feed custom portion (max 12)
+curl -X POST http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/feed \
+  -H "Content-Type: application/json" \
+  -d '{"portion": 3}'
+```
+
+#### Get Feeding History
+
+```bash
+curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/history
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "device": {
+    "id": "bfa64c250eb410189dy9gq",
+    "name": "Pixi Smart Feeder"
+  },
   "feed_history": {
-    "raw": "R:0  C:1  T:1758453557",
+    "raw": "R:0  C:2  T:1758453557",
     "parsed": {
       "remaining": "0",
-      "count": "1",
+      "count": "2",
       "timestamp": "1758453557",
       "timestamp_readable": "2025-09-21T11:19:17.000Z"
     }
   },
-  "message": "Feed history retrieved and analyzed"
+  "message": "Feed history retrieved successfully"
 }
 ```
 
-### 🗓️ Meal Plan Management
-
-| Method | Endpoint     | Description                      |
-| ------ | ------------ | -------------------------------- |
-| `GET`  | `/meal-plan` | Get current meal plan            |
-| `POST` | `/meal-plan` | Set new meal plan (max 10 plans) |
-
-**Set Meal Plan Example:**
+#### Meal Plan Management
 
 ```bash
-curl -X POST http://localhost:3000/meal-plan \
+# Get current meal plan
+curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/meal-plan
+
+# Set new meal plan
+curl -X POST http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/meal-plan \
   -H "Content-Type: application/json" \
   -d '{
     "meal_plan": [
@@ -157,29 +253,102 @@ curl -X POST http://localhost:3000/meal-plan \
   }'
 ```
 
-### 🎧 Real-time Monitoring
+### 🚽 Litter Box Control (Multi-Device)
 
-| Method | Endpoint            | Description                                    |
-| ------ | ------------------- | ---------------------------------------------- |
-| `POST` | `/start-listening`  | Start persistent connection for device reports |
-| `POST` | `/stop-listening`   | Stop persistent connection                     |
-| `GET`  | `/listening-status` | Check listening status                         |
+| Method | Endpoint                           | Description                |
+| ------ | ---------------------------------- | -------------------------- |
+| `GET`  | `/devices/:id/litter-box/status`   | Get comprehensive status   |
+| `POST` | `/devices/:id/litter-box/clean`    | Trigger manual cleaning    |
+| `POST` | `/devices/:id/litter-box/settings` | Update litter box settings |
 
-**Start Monitoring:**
+#### Get Litter Box Status
 
 ```bash
-curl -X POST http://localhost:3000/start-listening
+curl http://localhost:3000/devices/bfe88591a492929ab380tm/litter-box/status
 ```
 
-### 📊 Device Information
+**Response:**
 
-| Method | Endpoint    | Description                                     |
-| ------ | ----------- | ----------------------------------------------- |
-| `GET`  | `/scan-dps` | Scan device data points with configurable range |
+```json
+{
+  "success": true,
+  "device": {
+    "id": "bfe88591a492929ab380tm",
+    "name": "Cat Litter Box"
+  },
+  "parsed_status": {
+    "clean_delay": {
+      "seconds": 121,
+      "formatted": "2:01"
+    },
+    "sleep_mode": {
+      "enabled": true,
+      "start_time_minutes": 1410,
+      "start_time_formatted": "23:30",
+      "end_time_minutes": 420,
+      "end_time_formatted": "07:00"
+    },
+    "sensors": {
+      "defecation_duration": 23,
+      "defecation_frequency": 2,
+      "fault_alarm": 0,
+      "litter_level": "half"
+    },
+    "system": {
+      "state": "satnd_by",
+      "cleaning_in_progress": false,
+      "maintenance_required": false
+    },
+    "settings": {
+      "lighting": true,
+      "child_lock": false,
+      "prompt_sound": true,
+      "kitten_mode": false,
+      "automatic_homing": true
+    }
+  },
+  "raw_dps": { "101": 121, "102": true, "...": "..." }
+}
+```
 
-#### DPS Scanning Options
+#### Manual Cleaning
 
-The `/scan-dps` endpoint supports query parameters for flexible scanning:
+```bash
+curl -X POST http://localhost:3000/devices/bfe88591a492929ab380tm/litter-box/clean
+```
+
+#### Update Settings
+
+```bash
+curl -X POST http://localhost:3000/devices/bfe88591a492929ab380tm/litter-box/settings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clean_delay": 180,
+    "sleep_mode": {
+      "enabled": true,
+      "start_time": "23:00",
+      "end_time": "07:30"
+    },
+    "preferences": {
+      "lighting": false,
+      "kitten_mode": true
+    }
+  }'
+```
+
+### 🔍 Device Diagnostics
+
+#### DPS Scanning
+
+```bash
+# Full scan (default: DPS 1-255, 3000ms timeout)
+curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/scan-dps
+
+# Quick scan with custom range
+curl "http://localhost:3000/devices/bfa64c250eb410189dy9gq/scan-dps?start=1&end=120&timeout=1000"
+```
+
+**Query Parameters:**
 
 | Parameter | Default | Description                     |
 | --------- | ------- | ------------------------------- |
@@ -187,24 +356,14 @@ The `/scan-dps` endpoint supports query parameters for flexible scanning:
 | `end`     | `255`   | Ending DPS number               |
 | `timeout` | `3000`  | Timeout per DPS in milliseconds |
 
-**Examples:**
-
-```bash
-# Full scan (default: DPS 1-255, 3000ms timeout)
-curl http://localhost:3000/scan-dps
-
-# Quick scan of common DPS range
-curl "http://localhost:3000/scan-dps?start=1&end=120&timeout=1000"
-```
-
-**Response Format:**
+**Response:**
 
 ```json
 {
   "success": true,
   "scan_range": "1-255",
   "scanned_count": 255,
-  "found_count": 5,
+  "found_count": 2,
   "available_dps": {
     "3": {
       "value": 1,
@@ -216,7 +375,6 @@ curl "http://localhost:3000/scan-dps?start=1&end=120&timeout=1000"
       "length": 22
     }
   },
-  "errors_count": 0,
   "message": "DPS scan completed: 2 active DPS found out of 255 scanned"
 }
 ```
@@ -255,17 +413,75 @@ curl "http://localhost:3000/scan-dps?start=1&end=120&timeout=1000"
 
 ## 🔧 Device Data Points (DPS)
 
-| DPS | Name         | Type         | Description            |
-| --- | ------------ | ------------ | ---------------------- |
-| 1   | meal_plan    | Raw (Base64) | Feeding schedule data  |
-| 3   | manual_feed  | Integer      | Manual feeding trigger |
-| 104 | feed_history | String       | Feeding history logs   |
+### 🍽️ Smart Feeder DPS Reference
+
+| DPS | Name         | Type         | Access | Description                                   | Example Value                    |
+| --- | ------------ | ------------ | ------ | --------------------------------------------- | -------------------------------- |
+| 1   | meal_plan    | Raw (Base64) | R/W    | Feeding schedule data (encoded binary format) | `"AQEBAgEBAwEBBAEBBQEBBgEBBwEB"` |
+| 3   | manual_feed  | Integer      | W      | Manual feeding trigger (1-12 portions)        | `1`, `2`, `3`                    |
+| 104 | feed_history | String       | R      | Feeding history logs with timestamp and count | `"R:0  C:1  T:1758453557"`       |
+
+**DPS Access Types:**
+
+- **R**: Read-only (device reports status)
+- **W**: Write-only (send commands to device)
+- **R/W**: Read/Write (bidirectional communication)
+
+### 🚽 Smart Litter Box DPS Reference
+
+| DPS | Name                   | Type    | Access | Description                                    | Example Value                                            |
+| --- | ---------------------- | ------- | ------ | ---------------------------------------------- | -------------------------------------------------------- |
+| 101 | clean_delay            | Number  | R/W    | Delay before automatic cleaning (seconds)      | `121` (2:01 minutes)                                     |
+| 102 | sleep_mode_active      | Boolean | R/W    | Sleep mode enabled/disabled                    | `true`, `false`                                          |
+| 103 | sleep_mode_start       | Number  | R/W    | Sleep mode start time (minutes since midnight) | `1410` (23:30)                                           |
+| 104 | sleep_mode_end         | Number  | R/W    | Sleep mode end time (minutes since midnight)   | `420` (07:00)                                            |
+| 105 | defecation_frequency   | Number  | R      | Daily defecation count                         | `2`, `3`, `5`                                            |
+| 106 | defecation_duration    | Number  | R      | Last defecation duration (seconds)             | `23`, `45`, `67`                                         |
+| 107 | cleaning_in_progress   | Boolean | R      | Cleaning cycle active status                   | `true`, `false`                                          |
+| 108 | maintenance_required   | Boolean | R      | Maintenance alert status                       | `true`, `false`                                          |
+| 109 | system_state           | String  | R      | Current system operational state               | `"satnd_by"`, `"clumping"`, `"cat_inside"`, `"cleaning"` |
+| 110 | child_lock             | Boolean | R/W    | Child safety lock enabled                      | `true`, `false`                                          |
+| 111 | kitten_mode            | Boolean | R/W    | Kitten mode for smaller cats                   | `true`, `false`                                          |
+| 112 | litter_level           | String  | R      | Current litter level indicator                 | `"half"`, `"full"`, `"low"`                              |
+| 113 | reset_sand_level       | Boolean | W      | Reset litter level indicator                   | `true` (trigger action)                                  |
+| 114 | fault_alarm            | Number  | R      | System fault/error code                        | `0` (no error), `1`, `2`, etc.                           |
+| 115 | reset_factory_settings | Boolean | W      | Factory reset trigger (⚠️ Use with caution)    | `true` (trigger action)                                  |
+| 116 | lighting_enabled       | Boolean | R/W    | Internal lighting control                      | `true`, `false`                                          |
+| 117 | prompt_sound_enabled   | Boolean | R/W    | Audio prompts and notifications                | `true`, `false`                                          |
+| 118 | weight_unit            | String  | R/W    | Weight measurement unit                        | `"kg"`, `"lb"`                                           |
+| 119 | automatic_homing       | Boolean | R/W    | Auto-return to home position after cleaning    | `true`, `false`                                          |
+
+### 🔍 DPS Discovery Tips
+
+When scanning for DPS on new devices:
+
+1. **Common Ranges by Device Type:**
+
+   - **Feeders**: DPS 1-10, 100-110
+   - **Litter Boxes**: DPS 100-120
+   - **General**: DPS 1-5 (basic controls)
+
+2. **Scanning Strategy:**
+
+   ```bash
+   # Quick scan
+   curl "http://localhost:3000/devices/YOUR_DEVICE_ID/scan-dps?start=1&end=120&timeout=1000"
+
+   # Full discovery scan (slower)
+   curl "http://localhost:3000/devices/YOUR_DEVICE_ID/scan-dps"
+   ```
+
+3. **Understanding DPS Values:**
+   - **Numbers**: Usually settings, counters, or time values
+   - **Booleans**: On/off switches, status indicators
+   - **Strings**: Complex data, states, or encoded information
+   - **Base64**: Binary data like meal plans or configurations
 
 ## 📡 Real-time Events
 
-When listening mode is active, the API automatically logs:
+The multi-device API provides real-time monitoring capabilities:
 
-- **Meal Plan Changes**: When the device reports meal plan updates
+- **Device Connection**: Automatic detection of device status changes
 - **Feeding Activities**: When feeding occurs (manual or scheduled)
 - **Device Status**: Connection and disconnection events
 
@@ -274,197 +490,22 @@ When listening mode is active, the API automatically logs:
 ### Test Manual Feeding
 
 ```bash
-curl -X POST http://localhost:3000/feed
+# Replace with your actual device ID
+curl -X POST http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/feed
 ```
 
 ### Check Device Status
 
 ```bash
-# Full device scan (may take longer)
-curl http://localhost:3000/scan-dps
+# List all devices first
+curl http://localhost:3000/devices
+
+# Full device scan (may take longer) - replace with your device ID
+curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/scan-dps
 
 # Quick device discovery
-curl "http://localhost:3000/scan-dps?start=1&end=150&timeout=1000"
-
-
+curl "http://localhost:3000/devices/bfa64c250eb410189dy9gq/scan-dps?start=1&end=150&timeout=1000"
 ```
-
-## 🧹 Cat Litter Box Control
-
-The API includes specialized endpoints for controlling Tuya-based smart cat litter boxes. These endpoints provide comprehensive monitoring and control capabilities.
-
-### 📊 Status Monitoring
-
-| Endpoint             | Method | Description                                    |
-| -------------------- | ------ | ---------------------------------------------- |
-| `/litter-box/status` | GET    | Get complete litter box status and sensor data |
-
-#### Get litter box status
-
-```bash
-curl http://localhost:3000/litter-box/status
-```
-
-**Response format:**
-
-```json
-{
-  "success": true,
-  "parsed_status": {
-    "clean_delay": {
-      "seconds": 121,
-      "formatted": "2:01"
-    },
-    "sleep_mode": {
-      "enabled": true,
-      "start_time_minutes": 1410,
-      "start_time_formatted": "23:30",
-      "end_time_minutes": 420,
-      "end_time_formatted": "07:00"
-    },
-    "sensors": {
-      "defecation_duration": 23,
-      "defecation_frequency": 2,
-      "fault_alarm": 0,
-      "litter_level": "half"
-    },
-    "system": {
-      "state": "satnd_by",
-      "cleaning_in_progress": false,
-      "maintenance_required": false
-    },
-    "settings": {
-      "lighting": true,
-      "child_lock": false,
-      "prompt_sound": true,
-      "kitten_mode": false,
-      "automatic_homing": true
-    }
-  },
-  "raw_dps": {
-    "101": 121,
-    "102": true,
-    "103": 1410,
-    "104": 420,
-    "105": 2,
-    "106": 23,
-    "107": false,
-    "108": false,
-    "109": "satnd_by",
-    "110": false,
-    "111": false,
-    "112": "half",
-    "113": false,
-    "114": 0,
-    "115": false,
-    "116": true,
-    "117": true,
-    "118": "kg",
-    "119": true
-  },
-  "message": "Litter box status retrieved successfully"
-}
-```
-
-### 🧹 Cleaning Control
-
-| Endpoint            | Method | Description                   |
-| ------------------- | ------ | ----------------------------- |
-| `/litter-box/clean` | POST   | Trigger manual cleaning cycle |
-
-#### Trigger manual cleaning
-
-```bash
-curl -X POST http://localhost:3000/litter-box/clean
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Manual cleaning cycle triggered",
-  "action": "Cleaning started"
-}
-```
-
-### ⚙️ Settings Management
-
-| Endpoint             | Method | Description                |
-| -------------------- | ------ | -------------------------- |
-| `/litter-box/update` | POST   | Update litter box settings |
-
-#### Update settings
-
-```bash
-curl -X POST http://localhost:3000/litter-box/update \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clean_delay": 180,
-    "sleep_mode": {
-      "enabled": true,
-      "start_time": "23:00",
-      "end_time": "07:30"
-    },
-    "preferences": {
-      "lighting": false,
-      "kitten_mode": true
-    }
-  }'
-```
-
-**Available settings:**
-
-- **clean_delay**: Delay before automatic cleaning (0-3600 seconds)
-- **sleep_mode.enabled**: Enable/disable sleep mode (boolean)
-- **sleep_mode.start_time**: Sleep mode start time in HH:MM format
-- **sleep_mode.end_time**: Sleep mode end time in HH:MM format
-- **preferences.lighting**: Enable/disable lighting (boolean)
-- **preferences.child_lock**: Enable/disable child lock (boolean)
-- **preferences.prompt_sound**: Enable/disable sound prompts (boolean)
-- **preferences.kitten_mode**: Enable/disable kitten mode (boolean)
-- **preferences.automatic_homing**: Enable/disable automatic homing (boolean)
-
-**One-time actions:**
-
-```bash
-curl -X POST http://localhost:3000/litter-box/settings \
-  -H "Content-Type: application/json" \
-  -d '{
-    "actions": {
-      "reset_sand_level": true
-    }
-  }'
-```
-
-- **actions.reset_sand_level**: Reset the sand level indicator
-- **actions.reset_factory_settings**: Reset to factory settings (⚠️ Use with caution)
-
-### 📋 DPS Reference
-
-The litter box uses the following DPS (Data Point System) values:
-
-| DPS | Description             | Type    | Example                                            |
-| --- | ----------------------- | ------- | -------------------------------------------------- |
-| 101 | Clean delay             | Number  | 121 (seconds, 2:01)                                |
-| 102 | Sleep mode active       | Boolean | true                                               |
-| 103 | Sleep mode start time   | Number  | 1410 (minutes since midnight, 23:30)               |
-| 104 | Sleep mode end time     | Number  | 420 (minutes since midnight, 07:00)                |
-| 105 | Defecation frequency    | Number  | 2 (daily count of defecations)                     |
-| 106 | Defecation duration     | Number  | 23 (seconds - timer measuring defecation duration) |
-| 107 | Cleaning in progress    | Boolean | false                                              |
-| 108 | Maintenance required    | Boolean | false                                              |
-| 109 | System state            | String  | "satnd_by", "cat_inside", "clumping", "cleaning"   |
-| 110 | Child lock              | Boolean | false                                              |
-| 111 | Kitten mode active      | Boolean | false                                              |
-| 112 | Litter level            | String  | "half", "full"                                     |
-| 113 | Reset sand level        | Boolean | false                                              |
-| 114 | Alarme de défaut        | Number  | 0                                                  |
-| 115 | Reset factory settings  | Boolean | false                                              |
-| 116 | Lighting enabled        | Boolean | true                                               |
-| 117 | Prompt sound enabled    | Boolean | true                                               |
-| 118 | Weight unit             | String  | "kg"                                               |
-| 119 | Automatic homing active | Boolean | true                                               |
 
 ## 🔍 Troubleshooting
 
@@ -474,12 +515,12 @@ The litter box uses the following DPS (Data Point System) values:
 
    - Verify device IP address and network connectivity
    - Check if device is powered on and connected to WiFi
-   - If that worked before a disconnect error might have occured, restart the API, else it's probably a wrong protocol version (3.3 instead of 3.4 as an example)
+   - Retry the request, Tuya devices don't support multi devices connected at the same time (it might be your phone as an example), else it's probably a wrong protocol version (3.3 instead of 3.4 as an example)
 
-2. **Invalid Credentials | ECONNRESET**
+2. **ECONNRESET**
 
-   - Double-check `TUYA_DEVICE_ID` and `TUYA_DEVICE_KEY`
-   - Verify device version (usually 3.4 or 3.5 for feeder devices)
+   - Double-check `id` and `key` in device.json
+   - Verify device version (usually 3.3, 3.4 or 3.5 for recent tuya devices)
 
 3. **Meal Plan Not Reading**
 

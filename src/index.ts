@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import TuyAPI from "tuyapi";
 import dotenv from "dotenv";
 import { MealPlan } from "./utils/MealPlan";
 import {
@@ -8,114 +7,225 @@ import {
   secondsToMinSec,
   timeToMinutes,
 } from "./utils/formatters";
+import { DeviceManager } from "./utils/DeviceManager";
 
 dotenv.config();
 
 const app = new Hono();
+const deviceManager = new DeviceManager();
 
-const device = new TuyAPI({
-  id: process.env.TUYA_DEVICE_ID!,
-  key: process.env.TUYA_DEVICE_KEY!,
-  ip: process.env.TUYA_DEVICE_IP!,
-  port: Number(process.env.TUYA_DEVICE_PORT!),
-  version: process.env.TUYA_DEVICE_VERSION!,
-});
+(async () => {
+  await deviceManager.initializeDevices();
 
-let isListening = false;
-let currentMealPlan: string | null = null;
-
-device.on("error", (error) => {
-  console.log("⚠️ Device error :", error.message);
-});
-
-device.on("data", (data) => {
-  console.log("📡 Device reported data:", data);
-
-  if (data.dps && data.dps["1"]) {
-    console.log("🍽️ Meal plan reported by device:", data.dps["1"]);
-    currentMealPlan = data.dps["1"] as string;
-  }
-
-  if (data.dps && data.dps["3"]) {
-    console.log("🐱 Feeding activity reported:", data.dps["3"]);
-  }
-});
-
-device.on("connected", () => {
-  console.log("✅ Device connected and listening for reports");
-});
-
-device.on("disconnected", () => {
-  console.log("❌ Device disconnected");
-});
+  console.log("🚀 Device manager initialized");
+})();
 
 app.get("/", (c) => {
   return c.json({
-    message: "Feeder API for Pixi smart cat feeder",
+    message: "🐱 Cat Monitor API",
+    version: "2.0.0",
+    description: "Multi-device API for cat feeders and litter boxes",
     endpoints: [
-      "POST /feed - Send manual_feed with value: 1 (DPS 3)",
-      "GET /feed-history - Get detailed feeding history (DPS 104)",
-      "POST /meal-plan - Set new meal plan (DPS 1)",
-      "POST /start-listening - Start persistent connection to listen for device reports",
-      "POST /stop-listening - Stop persistent connection",
-      "GET /listening-status - Check if currently listening for reports",
-      "GET /scan-dps - Scan DPS range (params: ?start=1&end=255&timeout=100)",
-      "GET /litter-box/status - Get complete litter box status and sensors",
-      "POST /litter-box/clean - Trigger manual cleaning cycle",
-      "POST /litter-box/settings - Update litter box settings (auto-clean, lighting, etc.)",
+      "GET /",
+      "GET /devices",
+      "POST /devices/connect",
+      "POST /devices/disconnect",
+      "GET /devices/:deviceId/status",
+      "POST /devices/:deviceId/feeder/feed",
+      "GET /devices/:deviceId/feeder/history",
+      "GET /devices/:deviceId/feeder/meal-plan",
+      "POST /devices/:deviceId/feeder/meal-plan",
+      "GET /devices/:deviceId/litter-box/status",
+      "POST /devices/:deviceId/litter-box/clean",
+      "POST /devices/:deviceId/litter-box/settings",
+      "GET /devices/:deviceId/scan-dps",
     ],
   });
 });
 
-app.post("/feed", async (c) => {
-  let body: { portion: number } = { portion: 1 };
+// 📱 Device Management Endpoints
+
+app.get("/devices", (c) => {
+  const devices = deviceManager.getAllDevices().map((device) => ({
+    id: device.config.id,
+    name: device.config.name,
+    type: device.type,
+    product_name: device.config.product_name,
+    model: device.config.model,
+    ip: device.config.ip,
+    version: device.config.version,
+    connected: device.isConnected,
+    last_data: device.lastData,
+  }));
+
+  return c.json({
+    success: true,
+    devices,
+    total: devices.length,
+    message: "Devices list retrieved successfully",
+  });
+});
+
+app.post("/devices/connect", async (c) => {
   try {
-    body = await c.req.json();
-  } catch (error) {}
-  try {
-    await device.connect();
-
-    console.log("📤 Sending command manual_feed...");
-
-    if (body.portion > 12) {
-      console.warn("portion value seems limited to 12, this may fail");
-    }
-
-    await device.set({ dps: 3, set: body.portion });
-
-    device.disconnect();
-
+    await deviceManager.connectAllDevices();
     return c.json({
       success: true,
-      message: `Command manual_feed sent with value: ${body.portion}`,
+      message: "All devices connection initiated",
     });
   } catch (error) {
-    console.error("❌ Error:", error);
-
-    device.disconnect();
-
     return c.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       500
     );
   }
 });
 
-// @note give only the last serving data, history data is saved by tuya cloud
-app.get("/feed-history", async (c) => {
+app.post("/devices/disconnect", async (c) => {
   try {
-    await device.connect();
+    deviceManager.disconnectAllDevices();
+    return c.json({
+      success: true,
+      message: "All devices disconnected",
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
 
-    console.log("📊 Getting detailed feed history...");
+app.get("/devices/:deviceId/status", async (c) => {
+  const deviceId = c.req.param("deviceId");
 
-    const historyData = await device.get({ dps: 104 });
-    console.log("📊 Raw history data (DPS 104):", historyData);
+  try {
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
 
-    device.disconnect();
+    const status = await deviceManager.getDeviceStatus(deviceId);
 
+    return c.json({
+      success: true,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+        type: device.type,
+        connected: device.isConnected,
+      },
+      status,
+      message: "Device status retrieved successfully",
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+// 🍽️ Feeder Endpoints (Multi-device)
+
+app.post("/devices/:deviceId/feeder/feed", async (c) => {
+  const deviceId = c.req.param("deviceId");
+  let body: { portion: number } = { portion: 1 };
+
+  try {
+    body = await c.req.json();
+  } catch (error) {}
+
+  try {
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
+
+    if (device.type !== "feeder") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a feeder",
+        },
+        400
+      );
+    }
+
+    if (body.portion > 12) {
+      console.warn("portion value seems limited to 12, this may fail");
+    }
+
+    await deviceManager.sendCommand(deviceId, 3, body.portion);
+
+    return c.json({
+      success: true,
+      message: `Manual feed command sent to ${device.config.name} with portion: ${body.portion}`,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+app.get("/devices/:deviceId/feeder/history", async (c) => {
+  const deviceId = c.req.param("deviceId");
+
+  try {
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
+
+    if (device.type !== "feeder") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a feeder",
+        },
+        400
+      );
+    }
+
+    const status = await deviceManager.getDeviceStatus(deviceId);
+
+    const historyData = status.dps?.["104"];
     let parsedData: any = null;
     if (typeof historyData === "string") {
       // NOTE: Format "R:0  C:2  T:1758445204"
@@ -145,34 +255,101 @@ app.get("/feed-history", async (c) => {
 
     return c.json({
       success: true,
-      feed_history: parsedData || historyData,
-      message: "Feed history retrieved and analyzed",
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
+      feed_history: parsedData || "No history available",
+      message: "Feed history retrieved successfully",
     });
   } catch (error) {
-    console.error("❌ Error getting feed history:", error);
-    return c.json({ success: false, error: "Failed to get feed history" }, 500);
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
   }
 });
 
-// @note: retrieve from instance currentMealPlan, need update before usable
-app.get("/meal-plan", (c) => {
-  return c.json({
-    success: true,
-    meal_plan: currentMealPlan || null,
-    message: currentMealPlan
-      ? "Current meal plan retrieved"
-      : "Meal plan can't be retrieved, update it to set it on instance",
-  });
+app.get("/devices/:deviceId/feeder/meal-plan", async (c) => {
+  const deviceId = c.req.param("deviceId");
+
+  try {
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
+
+    if (device.type !== "feeder") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a feeder",
+        },
+        400
+      );
+    }
+
+    // Get cached meal plan
+    const cachedMealPlan = deviceManager.getMealPlan(deviceId);
+
+    return c.json({
+      success: true,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
+      decoded: cachedMealPlan ? MealPlan.decode(cachedMealPlan) : null,
+      meal_plan: cachedMealPlan,
+      message: cachedMealPlan
+        ? "Current meal plan retrieved from cache"
+        : "Meal plan not available. Update it first to cache it, or use the listening endpoint to get real-time updates.",
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
 });
 
-// Set a meal plan
-/* Sample request : (max 10 "plans")
-curl -X POST http://localhost:3000/meal-plan -H "Content-Type: application/json" -d '{"meal_plan":[{"days_of_week":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"time":"10:00","portion":2,"status":"Enabled"}]}'
-*/
-app.post("/meal-plan", async (c) => {
-  try {
-    const body = await c.req.json();
+app.post("/devices/:deviceId/feeder/meal-plan", async (c) => {
+  const deviceId = c.req.param("deviceId");
 
+  try {
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
+
+    if (device.type !== "feeder") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a feeder",
+        },
+        400
+      );
+    }
+
+    const body = await c.req.json();
     if (!body.meal_plan || !Array.isArray(body.meal_plan)) {
       return c.json(
         {
@@ -201,372 +378,334 @@ app.post("/meal-plan", async (c) => {
       }
     }
 
-    const encodedMealPlan = MealPlan.encode(body.meal_plan);
-    console.log("📊 Encoded meal plan:", encodedMealPlan);
+    const encodedPlan = MealPlan.encode(body.meal_plan);
 
-    await device.connect();
+    await deviceManager.sendCommand(deviceId, 1, encodedPlan);
 
-    console.log("📊 Setting new meal plan...");
-
-    await device.set({ dps: 1, set: encodedMealPlan } as any);
-
-    device.disconnect();
-
-    const formattedPlan = MealPlan.format(body.meal_plan);
+    // Cache the meal plan
+    deviceManager.setMealPlan(deviceId, encodedPlan);
 
     return c.json({
       success: true,
-      meal_plan: body.meal_plan,
-      formatted_display: formattedPlan,
-      encoded_base64: encodedMealPlan,
-      total_meals: body.meal_plan.length,
-      message: "Meal plan updated successfully",
+      message: `Meal plan updated for ${device.config.name}`,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
+      encoded_base64: encodedPlan,
+      formatted_meal_plan: MealPlan.format(body.meal_plan),
     });
   } catch (error) {
-    console.error("❌ Error setting meal plan:", error);
     return c.json(
       {
         success: false,
-        error: "Failed to set meal plan",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       500
     );
   }
 });
 
-app.post("/start-listening", async (c) => {
+// 🚽 Litter Box Endpoints
+
+app.get("/devices/:deviceId/litter-box/status", async (c) => {
+  const deviceId = c.req.param("deviceId");
+
   try {
-    if (isListening) {
-      return c.json({
-        success: false,
-        message: "Already listening for device reports",
-      });
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
     }
 
-    await device.connect();
-    isListening = true;
-
-    console.log("🎧 Started persistent listening for device reports");
-
-    return c.json({
-      success: true,
-      message: "Started listening for device reports, check logs",
-      status: "Device connected and listening",
-    });
-  } catch (error) {
-    console.error("❌ Error starting listener:", error);
-    isListening = false;
-    return c.json(
-      {
-        success: false,
-        error: "Failed to start listening",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      500
-    );
-  }
-});
-
-app.post("/stop-listening", async (c) => {
-  try {
-    if (!isListening) {
-      return c.json({
-        success: false,
-        message: "Not currently listening",
-      });
+    if (device.type !== "litter-box") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a litter box",
+        },
+        400
+      );
     }
 
-    device.disconnect();
-    isListening = false;
+    const status = await deviceManager.getDeviceStatus(deviceId);
 
-    console.log("🔇 Stopped listening for device reports");
+    const rawDps = status.dps || {};
 
-    return c.json({
-      success: true,
-      message: "Stopped listening for device reports",
-    });
-  } catch (error) {
-    console.error("❌ Error stopping listener:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Failed to stop listening",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      500
-    );
-  }
-});
-
-app.get("/listening-status", (c) => {
-  return c.json({
-    is_listening: isListening,
-    status: isListening ? "Listening for device reports" : "Not listening",
-  });
-});
-
-// Cat Litter Box endpoints
-app.get("/litter-box/status", async (c) => {
-  try {
-    await device.connect();
-
-    console.log("📊 Getting litter box status...");
-
-    // Get all litter box related DPS
-    const litterBoxDps = [
-      101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
-      116, 117, 118, 119,
-    ];
-    const status: Record<number, string | number | boolean> = {};
-
-    for (const dps of litterBoxDps) {
-      try {
-        const value = await device.get({ dps });
-        if (
-          value !== undefined &&
-          value !== null &&
-          typeof value !== "object"
-        ) {
-          status[dps] = value;
-        }
-      } catch (e) {
-        console.warn(`Could not read DPS ${dps}`);
-      }
-    }
-
-    device.disconnect();
-
-    // Parse and format the status
     const parsedStatus = {
       clean_delay: {
-        seconds: status[101] || 0,
-        formatted: secondsToMinSec((status[101] as number) || 0),
+        seconds: rawDps[101] || 0,
+        formatted: secondsToMinSec((rawDps[101] as number) || 0),
       },
       sleep_mode: {
-        enabled: status[102] || false,
-        start_time_minutes: status[103] || 0,
-        start_time_formatted: minutesToTime((status[103] as number) || 0),
-        end_time_minutes: status[104] || 0,
-        end_time_formatted: minutesToTime((status[104] as number) || 0),
+        enabled: rawDps[102] || false,
+        start_time_minutes: rawDps[103] || 0,
+        start_time_formatted: minutesToTime((rawDps[103] as number) || 0),
+        end_time_minutes: rawDps[104] || 0,
+        end_time_formatted: minutesToTime((rawDps[104] as number) || 0),
       },
       sensors: {
-        defecation_duration: status[106] || 0,
-        defecation_frequency: status[105] || 0,
-        fault_alarm: status[114] || 0,
+        defecation_duration: rawDps[106] || 0,
+        defecation_frequency: rawDps[105] || 0,
+        fault_alarm: rawDps[114] || 0,
         // @note values: half, full
-        litter_level: status[112] || "unknown",
+        litter_level: rawDps[112] || "unknown",
       },
       system: {
         // @note values: satnd_by, cat_inside, clumping, cleaning
         // @note: typo in stand_by is not by me but by tuya
-        state: status[109] || "unknown",
-        cleaning_in_progress: status[107] || false,
-        maintenance_required: status[108] || false,
+        state: rawDps[109] || "unknown",
+        cleaning_in_progress: rawDps[107] || false,
+        maintenance_required: rawDps[108] || false,
       },
       settings: {
-        lighting: status[116] || false,
-        child_lock: status[110] || false,
-        prompt_sound: status[117] || false,
-        kitten_mode: status[111] || false,
-        automatic_homing: status[119] || false,
+        lighting: rawDps[116] || false,
+        child_lock: rawDps[110] || false,
+        prompt_sound: rawDps[117] || false,
+        kitten_mode: rawDps[111] || false,
+        automatic_homing: rawDps[119] || false,
       },
     };
 
     return c.json({
       success: true,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
       parsed_status: parsedStatus,
-      raw_dps: status,
       message: "Litter box status retrieved successfully",
+      raw_dps: rawDps,
     });
   } catch (error) {
-    console.error("❌ Error getting litter box status:", error);
     return c.json(
       {
         success: false,
-        error: "Failed to get litter box status",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       500
     );
   }
 });
 
-app.post("/litter-box/clean", async (c) => {
+app.post("/devices/:deviceId/litter-box/clean", async (c) => {
+  const deviceId = c.req.param("deviceId");
+
   try {
-    await device.connect();
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
 
-    console.log("🧹 Triggering manual cleaning cycle...");
+    if (device.type !== "litter-box") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a litter box",
+        },
+        400
+      );
+    }
 
-    await device.set({ dps: 107, set: true });
-
-    device.disconnect();
+    await deviceManager.sendCommand(deviceId, 107, true);
 
     return c.json({
       success: true,
-      message: "Manual cleaning cycle triggered",
-      action: "Cleaning started",
+      message: `Manual cleaning cycle initiated for ${device.config.name}`,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
     });
   } catch (error) {
-    console.error("❌ Error triggering cleaning:", error);
     return c.json(
       {
         success: false,
-        error: "Failed to trigger cleaning cycle",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       500
     );
   }
 });
 
-app.post("/litter-box/update", async (c) => {
+app.post("/devices/:deviceId/litter-box/settings", async (c) => {
+  const deviceId = c.req.param("deviceId");
+
   try {
+    const device = deviceManager.getDevice(deviceId);
+    if (!device) {
+      return c.json(
+        {
+          success: false,
+          error: "Device not found",
+        },
+        404
+      );
+    }
+
+    if (device.type !== "litter-box") {
+      return c.json(
+        {
+          success: false,
+          error: "Device is not a litter box",
+        },
+        400
+      );
+    }
+
     const body = await c.req.json();
-    await device.connect();
+    const updates: Record<string, string | number | boolean> = {};
 
-    const updates: any = {};
-    let updateCount = 0;
-
-    // Clean delay (in seconds)
+    // Process settings updates with validation
     if (body.clean_delay !== undefined) {
-      const seconds = parseInt(body.clean_delay);
-      if (seconds >= 0 && seconds <= 1800) {
-        // Max 30 minutes
-        updates[101] = seconds;
-        updateCount++;
-      } else {
+      if (
+        typeof body.clean_delay !== "number" ||
+        body.clean_delay < 0 ||
+        body.clean_delay > 1800
+      ) {
         return c.json(
           {
             success: false,
-            error: "Clean delay must be between 0 and 1800 seconds",
+            error: "clean_delay must be between 0 and 1800 seconds",
           },
           400
         );
       }
+      updates["101"] = body.clean_delay;
     }
 
-    // Sleep mode
-    if (body.sleep_mode !== undefined) {
-      if (typeof body.sleep_mode.enabled === "boolean") {
-        updates[102] = body.sleep_mode.enabled;
-        updateCount++;
-      }
-
-      if (body.sleep_mode.start_time !== undefined) {
-        const startMinutes = timeToMinutes(body.sleep_mode.start_time);
-        if (startMinutes >= 0 && startMinutes < 1440) {
-          updates[103] = startMinutes;
-          updateCount++;
-        } else {
-          return c.json(
-            { success: false, error: "Invalid start time format. Use HH:MM" },
-            400
-          );
-        }
-      }
-
-      if (body.sleep_mode.end_time !== undefined) {
-        const endMinutes = timeToMinutes(body.sleep_mode.end_time);
-        if (endMinutes >= 0 && endMinutes < 1440) {
-          updates[104] = endMinutes;
-          updateCount++;
-        } else {
-          return c.json(
-            { success: false, error: "Invalid end time format. Use HH:MM" },
-            400
-          );
-        }
-      }
+    if (body.sleep_mode?.enabled !== undefined) {
+      updates["102"] = body.sleep_mode.enabled;
     }
 
-    // Preferences
-    if (body.preferences !== undefined) {
-      const prefs = body.preferences;
-
-      if (typeof prefs.lighting === "boolean") {
-        updates[116] = prefs.lighting;
-        updateCount++;
+    if (body.sleep_mode?.start_time !== undefined) {
+      const minutes = timeToMinutes(body.sleep_mode.start_time);
+      if (minutes === -1) {
+        return c.json(
+          {
+            success: false,
+            error: "Invalid start_time format. Use HH:MM",
+          },
+          400
+        );
       }
-
-      if (typeof prefs.child_lock === "boolean") {
-        updates[110] = prefs.child_lock;
-        updateCount++;
-      }
-
-      if (typeof prefs.prompt_sound === "boolean") {
-        updates[117] = prefs.prompt_sound;
-        updateCount++;
-      }
-
-      if (typeof prefs.kitten_mode === "boolean") {
-        updates[111] = prefs.kitten_mode;
-        updateCount++;
-      }
-
-      if (typeof prefs.automatic_homing === "boolean") {
-        updates[119] = prefs.automatic_homing;
-        updateCount++;
-      }
+      updates["103"] = minutes;
     }
 
-    // Actions (one-time triggers)
-    if (body.actions !== undefined) {
-      if (body.actions.reset_sand_level === true) {
-        updates[113] = true;
-        updateCount++;
+    if (body.sleep_mode?.end_time !== undefined) {
+      const minutes = timeToMinutes(body.sleep_mode.end_time);
+      if (minutes === -1) {
+        return c.json(
+          {
+            success: false,
+            error: "Invalid end_time format. Use HH:MM",
+          },
+          400
+        );
       }
-
-      if (body.actions.reset_factory_settings === true) {
-        updates[115] = true;
-        updateCount++;
-      }
+      updates["104"] = minutes;
     }
 
-    if (updateCount === 0) {
+    // Process preferences
+    if (body.preferences?.child_lock !== undefined) {
+      updates["110"] = body.preferences.child_lock;
+    }
+    if (body.preferences?.kitten_mode !== undefined) {
+      updates["111"] = body.preferences.kitten_mode;
+    }
+    if (body.preferences?.lighting !== undefined) {
+      updates["116"] = body.preferences.lighting;
+    }
+    if (body.preferences?.prompt_sound !== undefined) {
+      updates["117"] = body.preferences.prompt_sound;
+    }
+    if (body.preferences?.automatic_homing !== undefined) {
+      updates["119"] = body.preferences.automatic_homing;
+    }
+
+    // Process one-time actions
+    if (body.actions?.reset_sand_level) {
+      updates["113"] = true;
+    }
+    if (body.actions?.reset_factory_settings) {
+      updates["115"] = true;
+    }
+
+    if (Object.keys(updates).length === 0) {
       return c.json(
-        { success: false, error: "No valid settings provided to update" },
+        {
+          success: false,
+          error: "No valid settings provided",
+        },
         400
       );
     }
 
     // Apply updates
     for (const [dps, value] of Object.entries(updates)) {
-      await device.set({
-        dps: parseInt(dps),
-        set: value as string | number | boolean,
-      });
+      await deviceManager.sendCommand(
+        deviceId,
+        parseInt(dps),
+        value as string | number | boolean,
+        false
+      );
       console.log(`✅ Updated DPS ${dps} to:`, value);
     }
 
+    await deviceManager.disconnectDevice(deviceId);
+
     return c.json({
       success: true,
-      updated_settings: updates,
-      update_count: updateCount,
-      message: `Successfully updated ${updateCount} setting(s)`,
+      message: `Settings updated for ${device.config.name}`,
+      device: {
+        id: device.config.id,
+        name: device.config.name,
+      },
+      updated_settings: Object.keys(updates).length,
     });
   } catch (error) {
-    console.error("❌ Error updating litter box settings:", error);
     return c.json(
       {
         success: false,
-        error: "Failed to update litter box settings",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       500
     );
   }
 });
 
-// @note: debug
-app.get("/scan-dps", async (c) => {
+// @note: debug endpoint to scan DPS range for a specific device
+app.get("/devices/:deviceId/scan-dps", async (c) => {
+  const deviceId = c.req.param("deviceId");
+  const device = deviceManager.getDevice(deviceId);
+  if (!device) {
+    return c.json(
+      {
+        success: false,
+        error: "Device not found",
+      },
+      404
+    );
+  }
+
   const query = c.req.query();
   const startDps = parseInt(query.start || "1");
   const endDps = parseInt(query.end || "255");
   const timeout = parseInt(query.timeout || "3000");
 
   try {
-    await device.connect();
+    await deviceManager.connectDevice(deviceId);
 
     console.log(
       `🔍 Scanning DPS range ${startDps}-${endDps} (timeout: ${timeout}ms per DPS)...`
@@ -589,7 +728,10 @@ app.get("/scan-dps", async (c) => {
           setTimeout(() => reject(new Error("Timeout")), timeout)
         );
 
-        const value = await Promise.race([device.get({ dps }), timeoutPromise]);
+        const value = await Promise.race([
+          device.api.get({ dps }),
+          timeoutPromise,
+        ]);
 
         if (value !== undefined && value !== null) {
           dpsResults[dps] = {
@@ -612,7 +754,7 @@ app.get("/scan-dps", async (c) => {
       }
     }
 
-    device.disconnect();
+    await deviceManager.disconnectDevice(deviceId);
 
     return c.json({
       success: true,
@@ -627,7 +769,7 @@ app.get("/scan-dps", async (c) => {
   } catch (error) {
     console.error("❌ Error scanning DPS:", error);
 
-    device.disconnect();
+    await deviceManager.disconnectDevice(deviceId);
 
     return c.json({ success: false, error: "Failed to scan DPS" }, 500);
   }
