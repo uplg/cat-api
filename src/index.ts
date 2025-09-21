@@ -88,6 +88,7 @@ app.post("/feed", async (c) => {
   }
 });
 
+// @debug
 app.get("/scan-dps", async (c) => {
   try {
     await device.connect();
@@ -127,6 +128,7 @@ app.get("/scan-dps", async (c) => {
   }
 });
 
+// @note give only the last serving data, history data is saved by tuya cloud
 app.get("/feed-history", async (c) => {
   try {
     await device.connect();
@@ -176,6 +178,7 @@ app.get("/feed-history", async (c) => {
   }
 });
 
+// @note: retrieve from instance currentMealPlan, need update before usable
 app.get("/meal-plan", (c) => {
   return c.json({
     success: true,
@@ -186,6 +189,10 @@ app.get("/meal-plan", (c) => {
   });
 });
 
+// Set a meal plan
+/* Sample request : (max 10 "plans")
+curl -X POST http://localhost:3000/meal-plan -H "Content-Type: application/json" -d '{"meal_plan":[{"days_of_week":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"time":"10:00","portion":2,"status":"Enabled"}]}'
+*/
 app.post("/meal-plan", async (c) => {
   try {
     const body = await c.req.json();
