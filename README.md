@@ -23,7 +23,7 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
 ## 📋 Prerequisites
 
 - Node.js 22+
-- A Tuya-compatible smart cat feeder
+- A Tuya-compatible smart cat feeder and/or a smart (automatic) litter
 - Device credentials (ID, Key, IP, Port)
 
 ## 🛠️ Installation
