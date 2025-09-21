@@ -5,6 +5,7 @@ import { MealPlan } from "./utils/MealPlan";
 import { timeToMinutes } from "./utils/formatters";
 import { DeviceManager } from "./utils/DeviceManager";
 import { parseLitterBoxStatus } from "./utils/Litter";
+import { parseFeederStatus } from "./utils/Feeder";
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ app.get("/", (c) => {
       "POST /devices/disconnect",
       "GET /devices/:deviceId/status",
       "POST /devices/:deviceId/feeder/feed",
-      "GET /devices/:deviceId/feeder/history",
+      "GET /devices/:deviceId/feeder/status",
       "GET /devices/:deviceId/feeder/meal-plan",
       "POST /devices/:deviceId/feeder/meal-plan",
       "GET /devices/:deviceId/litter-box/status",
@@ -125,8 +126,12 @@ app.get("/devices/:deviceId/status", async (c) => {
         connected: device.isConnected,
       },
       parsed_status:
-        device.type === "litter-box" ? parseLitterBoxStatus(status) : null,
-      status,
+        device.type === "litter-box"
+          ? parseLitterBoxStatus(status)
+          : device.type === "feeder"
+          ? parseFeederStatus(status)
+          : null,
+      raw_status: status.dps,
       message: "Device status retrieved successfully",
     });
   } catch (error) {
@@ -197,7 +202,7 @@ app.post("/devices/:deviceId/feeder/feed", async (c) => {
   }
 });
 
-app.get("/devices/:deviceId/feeder/history", async (c) => {
+app.get("/devices/:deviceId/feeder/status", async (c) => {
   const deviceId = c.req.param("deviceId");
 
   try {
@@ -224,42 +229,15 @@ app.get("/devices/:deviceId/feeder/history", async (c) => {
 
     const status = await deviceManager.getDeviceStatus(deviceId);
 
-    const historyData = status.dps?.["104"];
-    let parsedData: any = null;
-    if (typeof historyData === "string") {
-      // NOTE: Format "R:0  C:2  T:1758445204"
-      const parts = historyData.split("  ");
-      parsedData = {
-        raw: historyData,
-        parsed: {
-          // servings to give
-          remaining: parts[0]?.replace("R:", "") || null,
-          // servings given
-          count: parts[1]?.replace("C:", "") || null,
-          // time last serving
-          timestamp: parts[2]?.replace("T:", "") || null,
-        },
-      };
-
-      if (parsedData.parsed.timestamp) {
-        const timestamp = parseInt(parsedData.parsed.timestamp);
-        if (!isNaN(timestamp)) {
-          const date = new Date(
-            timestamp > 1000000000000 ? timestamp : timestamp * 1000
-          );
-          parsedData.parsed.timestamp_readable = date.toISOString();
-        }
-      }
-    }
-
     return c.json({
       success: true,
       device: {
         id: device.config.id,
         name: device.config.name,
       },
-      feed_history: parsedData || "No history available",
-      message: "Feed history retrieved successfully",
+      parsed_status: parseFeederStatus(status),
+      raw_dps: status.dps,
+      message: "Feeder status retrieved successfully",
     });
   } catch (error) {
     return c.json(

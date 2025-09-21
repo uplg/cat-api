@@ -198,10 +198,10 @@ curl -X POST http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/feed \
   -d '{"portion": 3}'
 ```
 
-#### Get Feeding History
+#### Get Feeder Status
 
 ```bash
-curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/history
+curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/status
 ```
 
 **Response:**
@@ -209,20 +209,32 @@ curl http://localhost:3000/devices/bfa64c250eb410189dy9gq/feeder/history
 ```json
 {
   "success": true,
-  "device": {
-    "id": "bfa64c250eb410189dy9gq",
-    "name": "Pixi Smart Feeder"
-  },
-  "feed_history": {
-    "raw": "R:0  C:2  T:1758453557",
-    "parsed": {
-      "remaining": "0",
-      "count": "2",
-      "timestamp": "1758453557",
-      "timestamp_readable": "2025-09-21T11:19:17.000Z"
+  "device": { "id": "bfa64c250eb410189dy9gq", "name": "Pixi Smart Feeder" },
+  "parsed_status": {
+    "feeding": {
+      "manual_feed_enabled": true,
+      "last_feed_size": "2 portions",
+      "last_feed_report": 2,
+      "quick_feed_available": false
+    },
+    "settings": { "sound_enabled": false, "alexa_feed_enabled": false },
+    "system": {
+      "fault_status": true,
+      "powered_by": "AC Power",
+      "ip_address": "192.168.1.174"
+    },
+    "history": {
+      "raw": "R:0  C:2  T:1758482158",
+      "parsed": {
+        "remaining": "0",
+        "count": "2",
+        "timestamp": "1758482158",
+        "timestamp_readable": "2025-09-21T19:15:58.000Z"
+      }
     }
   },
-  "message": "Feed history retrieved successfully"
+  "raw_dps": { "3": 2, "14": 1, "...": "..." },
+  "message": "Feeder status retrieved successfully"
 }
 ```
 
