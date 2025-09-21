@@ -30,7 +30,7 @@ const deviceManager = new DeviceManager();
 app.get("/", (c) => {
   return c.json({
     message: "🐱 Cat Monitor API",
-    version: "2.0.0",
+    version: "1.0.0",
     description: "Multi-device API for cat feeders and litter boxes",
     endpoints: [
       "GET /",
