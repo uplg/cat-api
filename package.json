@@ -21,11 +21,14 @@
   "license": "MIT",
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
+    "@elysiajs/openapi": "^1.4.10",
     "dotenv": "^17.2.2",
     "elysia": "^1.4.6",
-    "tuyapi": "^7.7.1"
+    "tuyapi": "^7.7.1",
+    "typescript": "^5.9.2"
   },
   "devDependencies": {
-    "@types/node": "^22.15.1"
+    "@types/node": "^22.15.1",
+    "bun-types": "1.2.22"
   }
 }

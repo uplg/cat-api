@@ -1,6 +1,7 @@
+import { DPSObject } from "tuyapi";
 import { secondsToMinSec, minutesToTime } from "./formatters";
 
-export function parseLitterBoxStatus(status) {
+export function parseLitterBoxStatus(status: DPSObject) {
   const rawDps = status.dps || {};
 
   const parsedStatus = {

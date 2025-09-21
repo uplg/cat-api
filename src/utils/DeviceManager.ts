@@ -169,7 +169,7 @@ export class DeviceManager {
   async connectAllDevices(): Promise<void> {
     console.log("🔗 Connecting to all devices...");
 
-    for (const [deviceId, device] of this.devices) {
+    for (const [deviceId, device] of Array.from(this.devices)) {
       try {
         await this.connectDevice(deviceId);
       } catch (error) {
@@ -181,7 +181,7 @@ export class DeviceManager {
   disconnectAllDevices(): void {
     console.log("🔌 Disconnecting all devices...");
 
-    for (const [deviceId, device] of this.devices) {
+    for (const [deviceId, device] of Array.from(this.devices)) {
       try {
         device.api.disconnect();
       } catch (error) {

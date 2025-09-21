@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { DeviceManager } from "../utils/DeviceManager";
 import { parseLitterBoxStatus } from "../utils/Litter";
 import { parseFeederStatus } from "../utils/Feeder";
+import { ScanDpsQuerySchema } from "../schemas";
 
 /**
  * Device management routes
@@ -108,8 +109,10 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
       })
 
       // Debug endpoint to scan DPS range for a specific device
-      .get("/:deviceId/scan-dps", async ({ params, query, set }) => {
-        const deviceId = params.deviceId;
+      .get(
+        "/:deviceId/scan-dps",
+        async ({ params, query, set }) => {
+          const deviceId = params.deviceId;
         const device = deviceManager.getDevice(deviceId);
         if (!device) {
           set.status = 404;
@@ -198,6 +201,9 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
           set.status = 500;
           return { success: false, error: "Failed to scan DPS" };
         }
+      },
+      {
+        query: ScanDpsQuerySchema,
       })
   );
 }

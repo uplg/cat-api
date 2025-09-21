@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { openapi, fromTypes } from "@elysiajs/openapi";
 import dotenv from "dotenv";
 import { DeviceManager } from "./utils/DeviceManager";
 import { createDeviceRoutes } from "./routes/devices";
@@ -8,7 +9,22 @@ import { createLitterBoxRoutes } from "./routes/litter-box";
 
 dotenv.config();
 
-const app = new Elysia();
+const app = new Elysia().use(
+  openapi({
+    documentation: {
+      info: {
+        title: "🐱 Cat Monitor API",
+        version: "1.0.0",
+        description: "Multi-device API for cat feeders and litter boxes",
+      },
+      tags: [
+        { name: "devices", description: "Device management operations" },
+        { name: "feeder", description: "Smart feeder operations" },
+        { name: "litter-box", description: "Smart litter box operations" },
+      ],
+    },
+  })
+);
 
 // 🌐 CORS Configuration
 app.use(
@@ -61,3 +77,5 @@ const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {
   console.log(`🚀 Server started on http://localhost:${port}`);
 });
+
+export { app };

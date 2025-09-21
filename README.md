@@ -135,6 +135,10 @@ Run the container:
 docker run -p 3000:3000 cat-api
 ```
 
+### OpenAPI
+
+OpenAPI documentation (interactive) is available at `http://localhost:3000/openapi`
+
 ### 📚 API Endpoints
 
 ### 🏠 General

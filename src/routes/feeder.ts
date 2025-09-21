@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { DeviceManager } from "../utils/DeviceManager";
 import { MealPlan, MealPlanEntry } from "../utils/MealPlan";
 import { parseFeederStatus } from "../utils/Feeder";
+import { FeedRequestSchema, MealPlanSchema } from "../schemas";
 
 /**
  * Feeder routes
@@ -13,54 +14,56 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
 
       // 🍽️ Feeder Endpoints (Multi-device)
 
-      .post("/:deviceId/feeder/feed", async ({ params, body, set }) => {
-        const deviceId = params.deviceId;
-        let feedBody: { portion: number } = { portion: 1 };
+      .post(
+        "/:deviceId/feeder/feed",
+        async ({ params, body, set }) => {
+          const deviceId = params.deviceId;
+          const feedBody = { portions: (body as { portion?: number })?.portion || 1 };
 
-        if (body) {
-          feedBody = body as { portion: number };
-        }
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
 
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
+            if (device.type !== "feeder") {
+              set.status = 400;
+              return {
+                success: false,
+                error: "Device is not a feeder",
+              };
+            }
+
+            if (feedBody.portions > 12) {
+              console.warn("portions value seems limited to 12, this may fail");
+            }
+
+            await deviceManager.sendCommand(deviceId, 3, feedBody.portions);
+
+            return {
+              success: true,
+              message: `Manual feed command sent to ${device.config.name} with portions: ${feedBody.portions}`,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+              },
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Device not found",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          if (device.type !== "feeder") {
-            set.status = 400;
-            return {
-              success: false,
-              error: "Device is not a feeder",
-            };
-          }
-
-          if (feedBody.portion > 12) {
-            console.warn("portion value seems limited to 12, this may fail");
-          }
-
-          await deviceManager.sendCommand(deviceId, 3, feedBody.portion);
-
-          return {
-            success: true,
-            message: `Manual feed command sent to ${device.config.name} with portion: ${feedBody.portion}`,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-            },
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          body: FeedRequestSchema,
         }
-      })
+      )
 
       .get("/:deviceId/feeder/status", async ({ params, set }) => {
         const deviceId = params.deviceId;
@@ -149,76 +152,85 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
         }
       })
 
-      .post("/:deviceId/feeder/meal-plan", async ({ params, body, set }) => {
-        const deviceId = params.deviceId;
+      .post(
+        "/:deviceId/feeder/meal-plan",
+        async ({ params, body, set }) => {
+          const deviceId = params.deviceId;
 
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
-            return {
-              success: false,
-              error: "Device not found",
-            };
-          }
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
 
-          if (device.type !== "feeder") {
-            set.status = 400;
-            return {
-              success: false,
-              error: "Device is not a feeder",
-            };
-          }
-
-          const requestBody = body as { meal_plan: MealPlanEntry[] };
-          if (!requestBody.meal_plan || !Array.isArray(requestBody.meal_plan)) {
-            set.status = 400;
-            return {
-              success: false,
-              error: "meal_plan array is required",
-            };
-          }
-
-          if (requestBody.meal_plan.length > 10) {
-            console.warn("This may fail as max supported are 10 meal plans");
-          }
-
-          for (let i = 0; i < requestBody.meal_plan.length; i++) {
-            const entry = requestBody.meal_plan[i];
-            if (!MealPlan.validate(entry)) {
+            if (device.type !== "feeder") {
               set.status = 400;
               return {
                 success: false,
-                error: `Invalid meal plan entry at index ${i}`,
-                entry: entry,
+                error: "Device is not a feeder",
               };
             }
+
+            const requestBody = body as { meal_plan: MealPlanEntry[] };
+            if (
+              !requestBody.meal_plan ||
+              !Array.isArray(requestBody.meal_plan)
+            ) {
+              set.status = 400;
+              return {
+                success: false,
+                error: "meal_plan array is required",
+              };
+            }
+
+            if (requestBody.meal_plan.length > 10) {
+              console.warn("This may fail as max supported are 10 meal plans");
+            }
+
+            for (let i = 0; i < requestBody.meal_plan.length; i++) {
+              const entry = requestBody.meal_plan[i];
+              if (!MealPlan.validate(entry)) {
+                set.status = 400;
+                return {
+                  success: false,
+                  error: `Invalid meal plan entry at index ${i}`,
+                  entry: entry,
+                };
+              }
+            }
+
+            const encodedPlan = MealPlan.encode(requestBody.meal_plan);
+
+            await deviceManager.sendCommand(deviceId, 1, encodedPlan);
+
+            // Cache the meal plan
+            deviceManager.setMealPlan(deviceId, encodedPlan);
+
+            return {
+              success: true,
+              message: `Meal plan updated for ${device.config.name}`,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+              },
+              encoded_base64: encodedPlan,
+              formatted_meal_plan: MealPlan.format(requestBody.meal_plan),
+            };
+          } catch (error) {
+            set.status = 500;
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
           }
-
-          const encodedPlan = MealPlan.encode(requestBody.meal_plan);
-
-          await deviceManager.sendCommand(deviceId, 1, encodedPlan);
-
-          // Cache the meal plan
-          deviceManager.setMealPlan(deviceId, encodedPlan);
-
-          return {
-            success: true,
-            message: `Meal plan updated for ${device.config.name}`,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-            },
-            encoded_base64: encodedPlan,
-            formatted_meal_plan: MealPlan.format(requestBody.meal_plan),
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          body: MealPlanSchema,
         }
-      })
+      )
   );
 }
