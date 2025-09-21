@@ -113,97 +113,99 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
         "/:deviceId/scan-dps",
         async ({ params, query, set }) => {
           const deviceId = params.deviceId;
-        const device = deviceManager.getDevice(deviceId);
-        if (!device) {
-          set.status = 404;
-          return {
-            success: false,
-            error: "Device not found",
-          };
-        }
-
-        const startDps = parseInt(query.start || "1");
-        const endDps = parseInt(query.end || "255");
-        const timeout = parseInt(query.timeout || "3000");
-
-        try {
-          await deviceManager.connectDevice(deviceId);
-
-          console.log(
-            `🔍 Scanning DPS range ${startDps}-${endDps} (timeout: ${timeout}ms per DPS)...`
-          );
-
-          const dpsResults: Record<
-            number,
-            { value: unknown; type: string; length?: number }
-          > = {};
-          const errors: Record<number, string> = {};
-          let scannedCount = 0;
-          let foundCount = 0;
-
-          for (let dps = startDps; dps <= endDps; dps++) {
-            scannedCount++;
-            try {
-              console.log(
-                `🔍 Scanning DPS ${dps}... (${scannedCount}/${
-                  endDps - startDps + 1
-                })`
-              );
-
-              // Add timeout to prevent hanging on non-existent DPS
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Timeout")), timeout)
-              );
-
-              const value = await Promise.race([
-                device.api.get({ dps }),
-                timeoutPromise,
-              ]);
-
-              if (value !== undefined && value !== null) {
-                dpsResults[dps] = {
-                  value: value,
-                  type: typeof value,
-                  length: typeof value === "string" ? value.length : undefined,
-                };
-                foundCount++;
-                console.log(
-                  `✅ DPS ${dps}:`,
-                  JSON.stringify(value).substring(0, 100) +
-                    (JSON.stringify(value).length > 100 ? "..." : "")
-                );
-              }
-            } catch (e) {
-              errors[dps] = e instanceof Error ? e.message : "Unknown error";
-              if (e instanceof Error && !e.message.includes("Timeout")) {
-                console.warn(`❌ DPS ${dps}:`, e.message);
-              }
-            }
+          const device = deviceManager.getDevice(deviceId);
+          if (!device) {
+            set.status = 404;
+            return {
+              success: false,
+              error: "Device not found",
+            };
           }
 
-          await deviceManager.disconnectDevice(deviceId);
+          const startDps = parseInt(query.start || "1");
+          const endDps = parseInt(query.end || "255");
+          const timeout = parseInt(query.timeout || "3000");
 
-          return {
-            success: true,
-            scan_range: `${startDps}-${endDps}`,
-            scanned_count: scannedCount,
-            found_count: foundCount,
-            available_dps: dpsResults,
-            errors_count: Object.keys(errors).length,
-            errors: Object.keys(errors).length > 0 ? errors : undefined,
-            message: `DPS scan completed: ${foundCount} active DPS found out of ${scannedCount} scanned`,
-          };
-        } catch (error) {
-          console.error("❌ Error scanning DPS:", error);
+          try {
+            await deviceManager.connectDevice(deviceId);
 
-          await deviceManager.disconnectDevice(deviceId);
+            console.log(
+              `🔍 Scanning DPS range ${startDps}-${endDps} (timeout: ${timeout}ms per DPS)...`
+            );
 
-          set.status = 500;
-          return { success: false, error: "Failed to scan DPS" };
+            const dpsResults: Record<
+              number,
+              { value: unknown; type: string; length?: number }
+            > = {};
+            const errors: Record<number, string> = {};
+            let scannedCount = 0;
+            let foundCount = 0;
+
+            for (let dps = startDps; dps <= endDps; dps++) {
+              scannedCount++;
+              try {
+                console.log(
+                  `🔍 Scanning DPS ${dps}... (${scannedCount}/${
+                    endDps - startDps + 1
+                  })`
+                );
+
+                // Add timeout to prevent hanging on non-existent DPS
+                const timeoutPromise = new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error("Timeout")), timeout)
+                );
+
+                const value = await Promise.race([
+                  device.api.get({ dps }),
+                  timeoutPromise,
+                ]);
+
+                if (value !== undefined && value !== null) {
+                  dpsResults[dps] = {
+                    value: value,
+                    type: typeof value,
+                    length:
+                      typeof value === "string" ? value.length : undefined,
+                  };
+                  foundCount++;
+                  console.log(
+                    `✅ DPS ${dps}:`,
+                    JSON.stringify(value).substring(0, 100) +
+                      (JSON.stringify(value).length > 100 ? "..." : "")
+                  );
+                }
+              } catch (e) {
+                errors[dps] = e instanceof Error ? e.message : "Unknown error";
+                if (e instanceof Error && !e.message.includes("Timeout")) {
+                  console.warn(`❌ DPS ${dps}:`, e.message);
+                }
+              }
+            }
+
+            await deviceManager.disconnectDevice(deviceId);
+
+            return {
+              success: true,
+              scan_range: `${startDps}-${endDps}`,
+              scanned_count: scannedCount,
+              found_count: foundCount,
+              available_dps: dpsResults,
+              errors_count: Object.keys(errors).length,
+              errors: Object.keys(errors).length > 0 ? errors : undefined,
+              message: `DPS scan completed: ${foundCount} active DPS found out of ${scannedCount} scanned`,
+            };
+          } catch (error) {
+            console.error("❌ Error scanning DPS:", error);
+
+            await deviceManager.disconnectDevice(deviceId);
+
+            set.status = 500;
+            return { success: false, error: "Failed to scan DPS" };
+          }
+        },
+        {
+          query: ScanDpsQuerySchema,
         }
-      },
-      {
-        query: ScanDpsQuerySchema,
-      })
+      )
   );
 }

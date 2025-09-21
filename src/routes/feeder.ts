@@ -18,7 +18,9 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
         "/:deviceId/feeder/feed",
         async ({ params, body, set }) => {
           const deviceId = params.deviceId;
-          const feedBody = { portions: (body as { portion?: number })?.portion || 1 };
+          const feedBody = {
+            portions: body?.portion || 1,
+          };
 
           try {
             const device = deviceManager.getDevice(deviceId);

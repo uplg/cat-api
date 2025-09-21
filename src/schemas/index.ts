@@ -104,7 +104,22 @@ export const DisconnectDeviceSchema = t.Object({
 
 // 🔍 Device Debug Schemas
 export const ScanDpsQuerySchema = t.Object({
-  start: t.Optional(t.String({ pattern: "^[0-9]+$", description: "Starting DPS number (default: 1)" })),
-  end: t.Optional(t.String({ pattern: "^[0-9]+$", description: "Ending DPS number (default: 255)" })),
-  timeout: t.Optional(t.String({ pattern: "^[0-9]+$", description: "Timeout in milliseconds per DPS (default: 3000)" })),
+  start: t.Optional(
+    t.String({
+      pattern: "^[0-9]+$",
+      description: "Starting DPS number (default: 1)",
+    })
+  ),
+  end: t.Optional(
+    t.String({
+      pattern: "^[0-9]+$",
+      description: "Ending DPS number (default: 255)",
+    })
+  ),
+  timeout: t.Optional(
+    t.String({
+      pattern: "^[0-9]+$",
+      description: "Timeout in milliseconds per DPS (default: 3000)",
+    })
+  ),
 });
