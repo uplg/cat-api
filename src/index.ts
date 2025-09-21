@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import dotenv from "dotenv";
 import { MealPlan } from "./utils/MealPlan";
@@ -10,6 +11,14 @@ import { parseFeederStatus } from "./utils/Feeder";
 dotenv.config();
 
 const app = new Hono();
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PUT", "DELETE"],
+    allowHeaders: ["Content-Type", "Authorization"],
+  })
+);
 const deviceManager = new DeviceManager();
 
 (async () => {
@@ -288,7 +297,7 @@ app.get("/devices/:deviceId/feeder/meal-plan", async (c) => {
       meal_plan: cachedMealPlan,
       message: cachedMealPlan
         ? "Current meal plan retrieved from cache"
-        : "Meal plan not available. Update it first to cache it, or use the listening endpoint to get real-time updates.",
+        : "Meal plan not available. Update it first to cache it, or connect to get real-time updates.",
     });
   } catch (error) {
     return c.json(
