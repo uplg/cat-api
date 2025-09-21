@@ -313,12 +313,16 @@ app.get("/litter-box/status", async (c) => {
       101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
       116, 117, 118, 119,
     ];
-    const status: any = {};
+    const status: Record<number, string | number | boolean> = {};
 
     for (const dps of litterBoxDps) {
       try {
         const value = await device.get({ dps });
-        if (value !== undefined && value !== null) {
+        if (
+          value !== undefined &&
+          value !== null &&
+          typeof value !== "object"
+        ) {
           status[dps] = value;
         }
       } catch (e) {
@@ -347,14 +351,14 @@ app.get("/litter-box/status", async (c) => {
     const parsedStatus = {
       clean_delay: {
         seconds: status[101] || 0,
-        formatted: secondsToMinSec(status[101] || 0),
+        formatted: secondsToMinSec((status[101] as number) || 0),
       },
       sleep_mode: {
         enabled: status[102] || false,
         start_time_minutes: status[103] || 0,
-        start_time_formatted: minutesToTime(status[103] || 0),
+        start_time_formatted: minutesToTime((status[103] as number) || 0),
         end_time_minutes: status[104] || 0,
-        end_time_formatted: minutesToTime(status[104] || 0),
+        end_time_formatted: minutesToTime((status[104] as number) || 0),
       },
       sensors: {
         defecation_duration: status[106] || 0,
