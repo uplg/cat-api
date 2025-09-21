@@ -63,7 +63,6 @@ app.post("/feed", async (c) => {
 
 app.get("/scan-dps", async (c) => {
   try {
-    await device.find();
     await device.connect();
 
     console.log("🔍 Scanning all DPS...");
@@ -103,7 +102,6 @@ app.get("/scan-dps", async (c) => {
 
 app.get("/feed-history", async (c) => {
   try {
-    await device.find();
     await device.connect();
 
     console.log("📊 Getting detailed feed history...");
