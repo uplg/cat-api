@@ -24,8 +24,6 @@ app.get("/", (c) => {
     message: "Feeder API for Pixi smart cat feeder",
     endpoints: [
       "POST /feed - Send manual_feed with value: 1 (DPS 3)",
-      "GET /feed-report - Get feed report (DPS 15)",
-      "POST /feed-report - Set feed report value (0-12)",
       "GET /scan-dps - Scan all available DPS to find detailed data",
       "GET /feed-history - Get detailed feeding history (DPS 104)",
     ],
