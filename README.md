@@ -466,27 +466,27 @@ curl "http://localhost:3000/devices/bfa64c250eb410189dy9gq/scan-dps?start=1&end=
 
 ### 🚽 Smart Litter Box DPS Reference
 
-| DPS | Name                   | Type    | Access | Description                                    | Example Value                                            |
-| --- | ---------------------- | ------- | ------ | ---------------------------------------------- | -------------------------------------------------------- |
-| 101 | clean_delay            | Number  | R/W    | Delay before automatic cleaning (seconds)      | `121` (2:01 minutes)                                     |
-| 102 | sleep_mode_active      | Boolean | R/W    | Sleep mode enabled/disabled                    | `true`, `false`                                          |
-| 103 | sleep_mode_start       | Number  | R/W    | Sleep mode start time (minutes since midnight) | `1410` (23:30)                                           |
-| 104 | sleep_mode_end         | Number  | R/W    | Sleep mode end time (minutes since midnight)   | `420` (07:00)                                            |
-| 105 | defecation_frequency   | Number  | R      | Daily defecation count                         | `2`, `3`, `5`                                            |
-| 106 | defecation_duration    | Number  | R      | Last defecation duration (seconds)             | `23`, `45`, `67`                                         |
-| 107 | cleaning_in_progress   | Boolean | R      | Cleaning cycle active status                   | `true`, `false`                                          |
-| 108 | maintenance_required   | Boolean | R      | Maintenance alert status                       | `true`, `false`                                          |
-| 109 | system_state           | String  | R      | Current system operational state               | `"satnd_by"`, `"clumping"`, `"cat_inside"`, `"cleaning"` |
-| 110 | child_lock             | Boolean | R/W    | Child safety lock enabled                      | `true`, `false`                                          |
-| 111 | kitten_mode            | Boolean | R/W    | Kitten mode for smaller cats                   | `true`, `false`                                          |
-| 112 | litter_level           | String  | R      | Current litter level indicator                 | `"half"`, `"full"`, `"low"`                              |
-| 113 | reset_sand_level       | Boolean | W      | Reset litter level indicator                   | `true` (trigger action)                                  |
-| 114 | fault_alarm            | Number  | R      | System fault/error code                        | `0` (no error), `1`, `2`, etc.                           |
-| 115 | reset_factory_settings | Boolean | W      | Factory reset trigger (⚠️ Use with caution)    | `true` (trigger action)                                  |
-| 116 | lighting_enabled       | Boolean | R/W    | Internal lighting control                      | `true`, `false`                                          |
-| 117 | prompt_sound_enabled   | Boolean | R/W    | Audio prompts and notifications                | `true`, `false`                                          |
-| 118 | weight_unit            | String  | R/W    | Weight measurement unit                        | `"kg"`, `"lb"`                                           |
-| 119 | automatic_homing       | Boolean | R/W    | Auto-return to home position after cleaning    | `true`, `false`                                          |
+| DPS | Name                   | Type    | Access | Description                                    | Example Value                                                          |
+| --- | ---------------------- | ------- | ------ | ---------------------------------------------- | ---------------------------------------------------------------------- |
+| 101 | clean_delay            | Number  | R/W    | Delay before automatic cleaning (seconds)      | `121` (2:01 minutes)                                                   |
+| 102 | sleep_mode_active      | Boolean | R/W    | Sleep mode enabled/disabled                    | `true`, `false`                                                        |
+| 103 | sleep_mode_start       | Number  | R/W    | Sleep mode start time (minutes since midnight) | `1410` (23:30)                                                         |
+| 104 | sleep_mode_end         | Number  | R/W    | Sleep mode end time (minutes since midnight)   | `420` (07:00)                                                          |
+| 105 | defecation_frequency   | Number  | R      | Daily defecation count                         | `2`, `3`, `5`                                                          |
+| 106 | defecation_duration    | Number  | R      | Last defecation duration (seconds)             | `23`, `45`, `67`                                                       |
+| 107 | cleaning_in_progress   | Boolean | R      | Cleaning cycle active status                   | `true`, `false`                                                        |
+| 108 | maintenance_required   | Boolean | R      | Maintenance alert status                       | `true`, `false`                                                        |
+| 109 | system_state           | String  | R      | Current system operational state               | `"satnd_by"`, `"clumping"`, `"cat_inside"`, `"cleaning"`, `"sleeping"` |
+| 110 | child_lock             | Boolean | R/W    | Child safety lock enabled                      | `true`, `false`                                                        |
+| 111 | kitten_mode            | Boolean | R/W    | Kitten mode for smaller cats                   | `true`, `false`                                                        |
+| 112 | litter_level           | String  | R      | Current litter level indicator                 | `"half"`, `"full"`, `"low"`                                            |
+| 113 | reset_sand_level       | Boolean | W      | Reset litter level indicator                   | `true` (trigger action)                                                |
+| 114 | fault_alarm            | Number  | R      | System fault/error code                        | `0` (no error), `1`, `2`, etc.                                         |
+| 115 | reset_factory_settings | Boolean | W      | Factory reset trigger (⚠️ Use with caution)    | `true` (trigger action)                                                |
+| 116 | lighting_enabled       | Boolean | R/W    | Internal lighting control                      | `true`, `false`                                                        |
+| 117 | prompt_sound_enabled   | Boolean | R/W    | Audio prompts and notifications                | `true`, `false`                                                        |
+| 118 | weight_unit            | String  | R/W    | Weight measurement unit                        | `"kg"`, `"lb"`                                                         |
+| 119 | automatic_homing       | Boolean | R/W    | Auto-return to home position after cleaning    | `true`, `false`                                                        |
 
 ### 🔍 DPS Discovery Tips
 

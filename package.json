@@ -20,8 +20,9 @@
   "author": "Uplg",
   "license": "MIT",
   "dependencies": {
+    "@elysiajs/cors": "^1.4.0",
     "dotenv": "^17.2.2",
-    "hono": "^4.9.8",
+    "elysia": "^1.4.6",
     "tuyapi": "^7.7.1"
   },
   "devDependencies": {

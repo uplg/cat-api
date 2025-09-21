@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { serve } from "@hono/node-server";
+import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 import dotenv from "dotenv";
 import { DeviceManager } from "./utils/DeviceManager";
 import { createDeviceRoutes } from "./routes/devices";
@@ -9,15 +8,14 @@ import { createLitterBoxRoutes } from "./routes/litter-box";
 
 dotenv.config();
 
-const app = new Hono();
+const app = new Elysia();
 
 // 🌐 CORS Configuration
 app.use(
-  "*",
   cors({
     origin: "*",
-    allowMethods: ["GET", "POST", "PUT", "DELETE"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -30,8 +28,8 @@ const deviceManager = new DeviceManager();
 })();
 
 // 🏠 Root Endpoint
-app.get("/", (c) => {
-  return c.json({
+app.get("/", () => {
+  return {
     message: "🐱 Cat Monitor API",
     version: "1.0.0",
     description: "Multi-device API for cat feeders and litter boxes",
@@ -48,22 +46,18 @@ app.get("/", (c) => {
       "GET /devices/:deviceId/litter-box/status",
       "POST /devices/:deviceId/litter-box/clean",
       "POST /devices/:deviceId/litter-box/settings",
-      "GET /devices/:deviceId/scan-dps",
     ],
-  });
+  };
 });
 
-// 📱 Route Modules
-app.route("/devices", createDeviceRoutes(deviceManager));
-app.route("/devices", createFeederRoutes(deviceManager));
-app.route("/devices", createLitterBoxRoutes(deviceManager));
+// 🔗 Route Registration
+app.use(createDeviceRoutes(deviceManager));
+app.use(createFeederRoutes(deviceManager));
+app.use(createLitterBoxRoutes(deviceManager));
 
 // 🚀 Server Configuration
-
 const port = Number(process.env.PORT || 3000);
-console.log(`🚀 Server started on http://localhost:${port}`);
 
-export default {
-  port,
-  fetch: app.fetch,
-};
+app.listen(port, () => {
+  console.log(`🚀 Server started on http://localhost:${port}`);
+});
