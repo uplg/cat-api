@@ -50,8 +50,11 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
    ```
 
    To retrieve the device key (aka localkey) you need an account on Tuya cloud (free), create there : https://iot.tuya.com
+
    Then you need to create a project, define the correct datacenter and add your device to it, the simplest way is to scan the QRCode using Smart Life app.
+
    Then use the API Explorer > Device management > Query device details, paste your device id (got from devices list under your project), and you should see the device details including the localkey.
+
    (Note: The localkey changes each time the iot device is reset or removed from your SmartLife account.)
 
 4. **Start the server**
