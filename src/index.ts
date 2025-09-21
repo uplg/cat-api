@@ -2,7 +2,12 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import TuyAPI from "tuyapi";
 import dotenv from "dotenv";
-import { MealPlan } from "./MealPlan";
+import { MealPlan } from "./utils/MealPlan";
+import {
+  minutesToTime,
+  secondsToMinSec,
+  timeToMinutes,
+} from "./utils/formatters";
 
 dotenv.config();
 
@@ -332,21 +337,6 @@ app.get("/litter-box/status", async (c) => {
 
     device.disconnect();
 
-    // Helper function to convert minutes since midnight to HH:MM format
-    const minutesToTime = (minutes: number): string => {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return `${hours.toString().padStart(2, "0")}:${mins
-        .toString()
-        .padStart(2, "0")}`;
-    };
-
-    const secondsToMinSec = (totalSeconds: number): string => {
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-    };
-
     // Parse and format the status
     const parsedStatus = {
       clean_delay: {
@@ -423,6 +413,144 @@ app.post("/litter-box/clean", async (c) => {
       {
         success: false,
         error: "Failed to trigger cleaning cycle",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+app.post("/litter-box/update", async (c) => {
+  try {
+    const body = await c.req.json();
+    await device.connect();
+
+    const updates: any = {};
+    let updateCount = 0;
+
+    // Clean delay (in seconds)
+    if (body.clean_delay !== undefined) {
+      const seconds = parseInt(body.clean_delay);
+      if (seconds >= 0 && seconds <= 1800) {
+        // Max 30 minutes
+        updates[101] = seconds;
+        updateCount++;
+      } else {
+        return c.json(
+          {
+            success: false,
+            error: "Clean delay must be between 0 and 1800 seconds",
+          },
+          400
+        );
+      }
+    }
+
+    // Sleep mode
+    if (body.sleep_mode !== undefined) {
+      if (typeof body.sleep_mode.enabled === "boolean") {
+        updates[102] = body.sleep_mode.enabled;
+        updateCount++;
+      }
+
+      if (body.sleep_mode.start_time !== undefined) {
+        const startMinutes = timeToMinutes(body.sleep_mode.start_time);
+        if (startMinutes >= 0 && startMinutes < 1440) {
+          updates[103] = startMinutes;
+          updateCount++;
+        } else {
+          return c.json(
+            { success: false, error: "Invalid start time format. Use HH:MM" },
+            400
+          );
+        }
+      }
+
+      if (body.sleep_mode.end_time !== undefined) {
+        const endMinutes = timeToMinutes(body.sleep_mode.end_time);
+        if (endMinutes >= 0 && endMinutes < 1440) {
+          updates[104] = endMinutes;
+          updateCount++;
+        } else {
+          return c.json(
+            { success: false, error: "Invalid end time format. Use HH:MM" },
+            400
+          );
+        }
+      }
+    }
+
+    // Preferences
+    if (body.preferences !== undefined) {
+      const prefs = body.preferences;
+
+      if (typeof prefs.lighting === "boolean") {
+        updates[116] = prefs.lighting;
+        updateCount++;
+      }
+
+      if (typeof prefs.child_lock === "boolean") {
+        updates[110] = prefs.child_lock;
+        updateCount++;
+      }
+
+      if (typeof prefs.prompt_sound === "boolean") {
+        updates[117] = prefs.prompt_sound;
+        updateCount++;
+      }
+
+      if (typeof prefs.kitten_mode === "boolean") {
+        updates[111] = prefs.kitten_mode;
+        updateCount++;
+      }
+
+      if (typeof prefs.automatic_homing === "boolean") {
+        updates[119] = prefs.automatic_homing;
+        updateCount++;
+      }
+    }
+
+    // Actions (one-time triggers)
+    if (body.actions !== undefined) {
+      if (body.actions.reset_sand_level === true) {
+        updates[113] = true;
+        updateCount++;
+      }
+
+      if (body.actions.reset_factory_settings === true) {
+        updates[115] = true;
+        updateCount++;
+      }
+    }
+
+    if (updateCount === 0) {
+      return c.json(
+        { success: false, error: "No valid settings provided to update" },
+        400
+      );
+    }
+
+    // Apply updates
+    for (const [dps, value] of Object.entries(updates)) {
+      await device.set({
+        dps: parseInt(dps),
+        set: value as string | number | boolean,
+      });
+      console.log(`✅ Updated DPS ${dps} to:`, value);
+    }
+
+    return c.json({
+      success: true,
+      updated_settings: updates,
+      update_count: updateCount,
+      message: `Successfully updated ${updateCount} setting(s)`,
+    });
+  } catch (error) {
+    console.error("❌ Error updating litter box settings:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to update litter box settings",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       500

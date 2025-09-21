@@ -388,6 +388,58 @@ curl -X POST http://localhost:3000/litter-box/clean
 }
 ```
 
+### ⚙️ Settings Management
+
+| Endpoint             | Method | Description                |
+| -------------------- | ------ | -------------------------- |
+| `/litter-box/update` | POST   | Update litter box settings |
+
+#### Update settings
+
+```bash
+curl -X POST http://localhost:3000/litter-box/update \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clean_delay": 180,
+    "sleep_mode": {
+      "enabled": true,
+      "start_time": "23:00",
+      "end_time": "07:30"
+    },
+    "preferences": {
+      "lighting": false,
+      "kitten_mode": true
+    }
+  }'
+```
+
+**Available settings:**
+
+- **clean_delay**: Delay before automatic cleaning (0-3600 seconds)
+- **sleep_mode.enabled**: Enable/disable sleep mode (boolean)
+- **sleep_mode.start_time**: Sleep mode start time in HH:MM format
+- **sleep_mode.end_time**: Sleep mode end time in HH:MM format
+- **preferences.lighting**: Enable/disable lighting (boolean)
+- **preferences.child_lock**: Enable/disable child lock (boolean)
+- **preferences.prompt_sound**: Enable/disable sound prompts (boolean)
+- **preferences.kitten_mode**: Enable/disable kitten mode (boolean)
+- **preferences.automatic_homing**: Enable/disable automatic homing (boolean)
+
+**One-time actions:**
+
+```bash
+curl -X POST http://localhost:3000/litter-box/settings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "actions": {
+      "reset_sand_level": true
+    }
+  }'
+```
+
+- **actions.reset_sand_level**: Reset the sand level indicator
+- **actions.reset_factory_settings**: Reset to factory settings (⚠️ Use with caution)
+
 ### 📋 DPS Reference
 
 The litter box uses the following DPS (Data Point System) values:
