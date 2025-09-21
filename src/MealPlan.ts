@@ -89,7 +89,7 @@ export class MealPlan {
           throw new Error(`Invalid time: ${meal.time}`);
         }
 
-        if (meal.portion < 0 || meal.portion > 255) {
+        if (meal.portion < 0 || meal.portion > 12) {
           throw new Error(`Invalid portion: ${meal.portion}`);
         }
 
@@ -131,7 +131,7 @@ export class MealPlan {
     if (
       typeof entry.portion !== "number" ||
       entry.portion < 0 ||
-      entry.portion > 255
+      entry.portion > 12
     ) {
       return false;
     }

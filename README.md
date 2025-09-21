@@ -143,7 +143,7 @@ curl -X POST http://localhost:3000/start-listening
 {
   "days_of_week": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
   "time": "HH:MM",
-  "portion": 1-255,
+  "portion": 1-12,
   "status": "Enabled" | "Disabled"
 }
 ```
@@ -159,7 +159,7 @@ curl -X POST http://localhost:3000/start-listening
 
 ### Portions
 
-- Integer value from 1 to 255
+- Integer value from 1 to 12
 - Represents the number of portions to dispense
 
 ### Status
