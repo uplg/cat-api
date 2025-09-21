@@ -332,7 +332,7 @@ curl http://localhost:3000/litter-box/status
       "end_time_formatted": "07:00"
     },
     "sensors": {
-      "temperature": 28
+      "defecation_duration": 23
     },
     "system": {
       "state": "satnd_by",
@@ -340,7 +340,7 @@ curl http://localhost:3000/litter-box/status
       "maintenance_required": false,
       "kitten_mode": false,
       "automatic_homing": true,
-      "daily_cycle_count": 1,
+      "defecation_frequency": 2,
       "hourly_cycle_count": 0
     },
     "settings": {
@@ -388,8 +388,8 @@ The litter box uses the following DPS (Data Point System) values:
 | 102 | Sleep mode active       | Boolean | true                                                                                  |
 | 103 | Sleep mode start time   | Number  | 1410 (minutes since midnight, 23:30)                                                  |
 | 104 | Sleep mode end time     | Number  | 420 (minutes since midnight, 07:00)                                                   |
-| 105 | Operating mode ⚠️       | Number  | 1 (probably wrong - mapped as daily_cycle_count but doesn't increment)                |
-| 106 | Temperature ⚠️          | Number  | 28 (probably wrong - drops from 28→15 when cat enters, likely weight/presence sensor) |
+| 105 | Defecation frequency    | Number  | 2 (daily count of defecations) |
+| 106 | Defecation duration     | Number  | 23 (seconds - timer measuring defecation duration) |
 | 107 | Cleaning in progress    | Boolean | false                                                                                 |
 | 108 | Maintenance required    | Boolean | false                                                                                 |
 | 109 | System state            | String  | "stand_by"                                                                            |

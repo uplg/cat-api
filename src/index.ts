@@ -357,8 +357,10 @@ app.get("/litter-box/status", async (c) => {
         end_time_formatted: minutesToTime(status[104] || 0),
       },
       sensors: {
+        defecation_duration: status[106] || 0,
+        defecation_frequency: status[105] || 0,
         // @TODO: probably wrong
-        temperature: status[106] || 0,
+        hourly_cycle_count: status[114] || 0,
       },
       system: {
         state: status[109] || "unknown",
@@ -366,10 +368,6 @@ app.get("/litter-box/status", async (c) => {
         maintenance_required: status[108] || false,
         kitten_mode: status[111] || false,
         automatic_homing: status[119] || false,
-        // @TODO: probably wrong
-        daily_cycle_count: status[105] || 0,
-        // @TODO: probably wrong
-        hourly_cycle_count: status[114] || 0,
       },
       settings: {
         lighting: status[116] || false,
