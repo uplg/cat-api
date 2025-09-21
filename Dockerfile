@@ -5,7 +5,6 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
-# Copy rest of the files
 COPY . ./
 
 RUN bun build src/index.ts --compile --outfile server
@@ -18,5 +17,4 @@ WORKDIR /app
 COPY --from=builder /app/devices.json ./devices.json
 COPY --from=builder /app/server ./server
 
-# Run the binary
 CMD ["./server"]
