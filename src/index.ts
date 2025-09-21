@@ -2,11 +2,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import dotenv from "dotenv";
 import { MealPlan } from "./utils/MealPlan";
-import {
-  minutesToTime,
-  secondsToMinSec,
-  timeToMinutes,
-} from "./utils/formatters";
+import { timeToMinutes } from "./utils/formatters";
 import { DeviceManager } from "./utils/DeviceManager";
 import { parseLitterBoxStatus } from "./utils/Litter";
 
@@ -128,7 +124,7 @@ app.get("/devices/:deviceId/status", async (c) => {
         type: device.type,
         connected: device.isConnected,
       },
-      decoded:
+      parsed_status:
         device.type === "litter-box" ? parseLitterBoxStatus(status) : null,
       status,
       message: "Device status retrieved successfully",

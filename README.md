@@ -415,11 +415,21 @@ curl "http://localhost:3000/devices/bfa64c250eb410189dy9gq/scan-dps?start=1&end=
 
 ### 🍽️ Smart Feeder DPS Reference
 
-| DPS | Name         | Type         | Access | Description                                   | Example Value                    |
-| --- | ------------ | ------------ | ------ | --------------------------------------------- | -------------------------------- |
-| 1   | meal_plan    | Raw (Base64) | R/W    | Feeding schedule data (encoded binary format) | `"AQEBAgEBAwEBBAEBBQEBBgEBBwEB"` |
-| 3   | manual_feed  | Integer      | W      | Manual feeding trigger (1-12 portions)        | `1`, `2`, `3`                    |
-| 104 | feed_history | String       | R      | Feeding history logs with timestamp and count | `"R:0  C:1  T:1758453557"`       |
+| DPS | Name               | Type         | Access | Description                                           | Example Value                       |
+| --- | ------------------ | ------------ | ------ | ----------------------------------------------------- | ----------------------------------- |
+| 1   | meal_plan          | Raw (Base64) | R/W    | Feeding schedule data (encoded binary format)         | `"AQEBAgEBAwEBBAEBBQEBBgEBBwEB"`    |
+| 2   | quick_feed         | Boolean      | W      | Quick feeding trigger                                 | `true`, `false`                     |
+| 3   | manual_feed        | Integer      | W      | Manual feeding trigger (1-12 portions)                | `1`, `2`, `3`                       |
+| 9   | factory_reset      | Boolean      | W      | Factory reset trigger (true: reset, false: no reset)  | `true`, `false`                     |
+| 14  | fault              | Boolean      | R      | Fault alarm (0 or 1?)                                 | `0`, `1`                            |
+| 15  | feed_report        | Integer      | R      | Portions distributed                                  | `0`, `1`, `2`...                    |
+| 101 | feed_size          | Integer      | R      | Feed size distributed                                 | `1份`, `2份` (1 portion, 2 portion) |
+| 102 | manual_feed_switch | Boolean      | R/W    | Manual feed switch (true: enabled, false: disabled)   | `true`, `false`                     |
+| 103 | sound_switch       | Boolean      | R/W    | Sound switch (true: enabled, false: disabled)         | `true`, `false`                     |
+| 104 | feed_history       | String       | R      | Feeding history logs with timestamp and count         | `"R:0  C:1  T:1758453557"`          |
+| 105 | powered_by         | String       | R      | Powered by (e.g., "Tuya")                             | `"Tuya"`                            |
+| 106 | feed_by_alexa      | Boolean      | R/W    | Feed by Alexa switch (true: enabled, false: disabled) | `true`, `false`                     |
+| 107 | ip_address         | String       | R      | IP address of the device                              | `"192.168.1.100"`                   |
 
 **DPS Access Types:**
 
