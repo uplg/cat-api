@@ -316,7 +316,8 @@ curl http://localhost:3000/litter-box/status
     "sensors": {
       "defecation_duration": 23,
       "defecation_frequency": 2,
-      "fault_alarm": 0
+      "fault_alarm": 0,
+      "litter_level": "half"
     },
     "system": {
       "state": "satnd_by",
@@ -329,8 +330,7 @@ curl http://localhost:3000/litter-box/status
       "prompt_sound": true,
       "kitten_mode": false,
       "automatic_homing": true
-    },
-    "litter_level": "half"
+    }
   },
   "raw_dps": {
     "101": 121,

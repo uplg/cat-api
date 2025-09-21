@@ -364,6 +364,8 @@ app.get("/litter-box/status", async (c) => {
         defecation_duration: status[106] || 0,
         defecation_frequency: status[105] || 0,
         fault_alarm: status[114] || 0,
+        // @note values: half, full
+        litter_level: status[112] || "unknown",
       },
       system: {
         // @note values: satnd_by, cat_inside, clumping, cleaning
@@ -379,8 +381,6 @@ app.get("/litter-box/status", async (c) => {
         kitten_mode: status[111] || false,
         automatic_homing: status[119] || false,
       },
-      // @note values: half, full
-      litter_level: status[112] || "unknown",
     };
 
     return c.json({
