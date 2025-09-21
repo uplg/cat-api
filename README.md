@@ -38,20 +38,32 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
 
 ## 🛠️ Installation
 
-1. **Clone the repository**
+1. **Getting Device Credentials**
+
+   To retrieve device credentials, you need a Tuya Cloud account (free):
+
+   1. Create an account at https://iot.tuya.com
+   2. Create a project and select the correct datacenter
+   3. Add your devices (easiest way: scan QR code with Smart Life app)
+   4. Use API Explorer > Device Management > Query device details
+   5. Get the device ID from the devices list and retrieve the local key
+
+   **Note**: The local key changes when the device is reset or removed from Smart Life.
+
+2. **Clone the repository**
 
    ```bash
    git clone https://github.com/uplg/cat-api.git
    cd cat-api
    ```
 
-2. **Install dependencies**
+3. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-3. **Device Configuration**
+4. **Device Configuration**
 
    Create a `devices.json` file in the root directory with your device configurations:
 
@@ -88,7 +100,7 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
    - `ip`: Local IP address of the device
    - `version`: Tuya protocol version (usually 3.4 or 3.5)
 
-4. **Environment Setup (Optional)**
+5. **Environment Setup (Optional)**
 
    ```bash
    cp .env.example .env
@@ -100,18 +112,6 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
    # API Server port
    PORT=3000
    ```
-
-5. **Getting Device Credentials**
-
-   To retrieve device credentials, you need a Tuya Cloud account (free):
-
-   1. Create an account at https://iot.tuya.com
-   2. Create a project and select the correct datacenter
-   3. Add your devices (easiest way: scan QR code with Smart Life app)
-   4. Use API Explorer > Device Management > Query device details
-   5. Get the device ID from the devices list and retrieve the local key
-
-   **Note**: The local key changes when the device is reset or removed from Smart Life.
 
 6. **Start the server**
    ```bash
@@ -130,13 +130,13 @@ The API will be available at `http://localhost:3000`
 
 ### 📱 Device Management
 
-| Method | Endpoint                | Description                   |
-| ------ | ----------------------- | ----------------------------- |
-| `GET`  | `/devices`              | List all configured devices   |
-| `POST` | `/devices/connect`      | Connect to all devices        |
-| `POST` | `/devices/disconnect`   | Disconnect from all devices   |
-| `GET`  | `/devices/:id/status`   | Get specific device status    |
-| `GET`  | `/devices/:id/scan-dps` | Scan device data points (DPS) |
+| Method | Endpoint                | Description                              |
+| ------ | ----------------------- | ---------------------------------------- |
+| `GET`  | `/devices`              | List all configured devices              |
+| `POST` | `/devices/connect`      | Connect to all devices (monitor devices) |
+| `POST` | `/devices/disconnect`   | Disconnect from all devices              |
+| `GET`  | `/devices/:id/status`   | Get specific device status               |
+| `GET`  | `/devices/:id/scan-dps` | Scan device data points (DPS)            |
 
 #### List All Devices
 

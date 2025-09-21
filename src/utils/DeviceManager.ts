@@ -81,7 +81,6 @@ export class DeviceManager {
           type: deviceType,
         };
 
-        // Configuration des event listeners
         api.on("connected", () => {
           console.log(`✅ Device connected: ${config.name} (${config.id})`);
           deviceInstance.isConnected = true;
@@ -151,7 +150,6 @@ export class DeviceManager {
     }
 
     try {
-      await device.api.find();
       await device.api.connect();
       return true;
     } catch (error) {
