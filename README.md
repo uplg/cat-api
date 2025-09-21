@@ -191,12 +191,6 @@ When listening mode is active, the API automatically logs:
 curl -X POST http://localhost:3000/feed
 ```
 
-### Test Meal Plan Decoding
-
-```bash
-curl http://localhost:3000/test-meal-plan
-```
-
 ### Check Device Status
 
 ```bash
