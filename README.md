@@ -14,7 +14,7 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
 
 - **Meal Plan Management**: Create, read, and update feeding schedules with Base64 encoding/decoding and caching
 - **Manual Feeding**: Trigger immediate feeding sessions with customizable portions
-- **Feed History**: Retrieve detailed feeding logs with parsed timestamps and portion tracking
+- **Feeder status**: Retrieve detailed feeding logs with parsed timestamps and portion tracking
 - **Multi-Feeder Support**: Manage multiple feeders independently
 
 ### 🚽 Litter Box Monitoring
@@ -182,7 +182,7 @@ curl -X POST http://localhost:3000/devices/disconnect
 | Method | Endpoint                        | Description                    |
 | ------ | ------------------------------- | ------------------------------ |
 | `POST` | `/devices/:id/feeder/feed`      | Trigger manual feeding         |
-| `GET`  | `/devices/:id/feeder/history`   | Get feeding history            |
+| `GET`  | `/devices/:id/feeder/status`    | Get feeder status              |
 | `GET`  | `/devices/:id/feeder/meal-plan` | Get current meal plan (cached) |
 | `POST` | `/devices/:id/feeder/meal-plan` | Set new meal plan              |
 
