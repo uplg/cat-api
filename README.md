@@ -32,7 +32,7 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
 
 ## 📋 Prerequisites
 
-- Node.js 22+
+- Bun latest (https://bun.com)
 - One or more Tuya-compatible smart cat feeders and/or automatic litter boxes
 - Device credentials (ID, Key, IP) for each device
 
@@ -60,7 +60,7 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
 3. **Install dependencies**
 
    ```bash
-   npm install
+   bun install
    ```
 
 4. **Device Configuration**
@@ -114,8 +114,9 @@ A Node.js multi-device API built with Hono for monitoring and controlling locall
    ```
 
 6. **Start the server**
+
    ```bash
-   npm start
+   bun start
    ```
 
 The API will be available at `http://localhost:3000`
