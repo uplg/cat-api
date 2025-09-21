@@ -16,8 +16,32 @@ const device = new TuyAPI({
   version: process.env.TUYA_DEVICE_VERSION!,
 });
 
+let isListening = false;
+let currentMealPlan: string | null = null;
+
 device.on("error", (error) => {
   console.log("⚠️ Device error :", error.message);
+});
+
+device.on("data", (data) => {
+  console.log("📡 Device reported data:", data);
+
+  if (data.dps && data.dps["1"]) {
+    console.log("🍽️ Meal plan reported by device:", data.dps["1"]);
+    currentMealPlan = data.dps["1"] as string;
+  }
+
+  if (data.dps && data.dps["3"]) {
+    console.log("🐱 Feeding activity reported:", data.dps["3"]);
+  }
+});
+
+device.on("connected", () => {
+  console.log("✅ Device connected and listening for reports");
+});
+
+device.on("disconnected", () => {
+  console.log("❌ Device disconnected");
 });
 
 app.get("/", (c) => {
@@ -27,8 +51,10 @@ app.get("/", (c) => {
       "POST /feed - Send manual_feed with value: 1 (DPS 3)",
       "GET /scan-dps - Scan all available DPS to find detailed data",
       "GET /feed-history - Get detailed feeding history (DPS 104)",
-      "GET /meal-plan - Get current meal plan (DPS 101)",
-      "POST /meal-plan - Set new meal plan (DPS 101)",
+      "POST /meal-plan - Set new meal plan (DPS 1)",
+      "POST /start-listening - Start persistent connection to listen for device reports",
+      "POST /stop-listening - Stop persistent connection",
+      "GET /listening-status - Check if currently listening for reports",
     ],
   });
 });
@@ -150,91 +176,14 @@ app.get("/feed-history", async (c) => {
   }
 });
 
-// @todo: not working atm
-app.get("/meal-plan", async (c) => {
-  try {
-    await device.connect();
-
-    console.log("Testing DPS 1 specifically for meal plan...");
-
-    let mealPlanData;
-    try {
-      mealPlanData = await device.get({ dps: 1 });
-      console.log("DPS 1 raw value:", mealPlanData);
-      console.log("DPS 1 type:", typeof mealPlanData);
-      console.log("DPS 1 length:", mealPlanData?.length);
-    } catch (error) {
-      console.error("Error getting DPS 1:", error);
-      device.disconnect();
-      return c.json(
-        {
-          success: false,
-          error: "Cannot access DPS 1",
-          details: error instanceof Error ? error.message : "Unknown error",
-        },
-        500
-      );
-    }
-
-    device.disconnect();
-
-    const isValidBase64 =
-      typeof mealPlanData === "string" &&
-      mealPlanData.length > 0 &&
-      /^[A-Za-z0-9+/]*={0,2}$/.test(mealPlanData);
-
-    if (!mealPlanData || !isValidBase64) {
-      return c.json(
-        {
-          success: false,
-          error: "DPS 1 does not contain valid Base64 meal plan data",
-          dps_1_value: mealPlanData,
-          data_type: typeof mealPlanData,
-          is_valid_base64: isValidBase64,
-          debug_info:
-            "DPS 1 should contain Base64 encoded meal plan according to device spec",
-        },
-        400
-      );
-    }
-
-    try {
-      const decodedMealPlan = MealPlan.decode(mealPlanData);
-      const formattedPlan = MealPlan.format(decodedMealPlan);
-
-      return c.json({
-        success: true,
-        original_base64: mealPlanData,
-        decoded_meal_plan: decodedMealPlan,
-        formatted_display: formattedPlan,
-        total_meals: decodedMealPlan.length,
-        message: "Meal plan retrieved successfully",
-      });
-    } catch (decodeError) {
-      return c.json(
-        {
-          success: false,
-          error: "Failed to decode meal plan from DPS 1",
-          dps_1_value: mealPlanData,
-          decode_error:
-            decodeError instanceof Error
-              ? decodeError.message
-              : "Unknown decode error",
-        },
-        500
-      );
-    }
-  } catch (error) {
-    console.error("❌ Error getting meal plan:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Failed to get meal plan",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      500
-    );
-  }
+app.get("/meal-plan", (c) => {
+  return c.json({
+    success: true,
+    meal_plan: currentMealPlan || null,
+    message: currentMealPlan
+      ? "Current meal plan retrieved"
+      : "Meal plan can't be retrieved, update it to set it on instance",
+  });
 });
 
 app.post("/meal-plan", async (c) => {
@@ -297,6 +246,77 @@ app.post("/meal-plan", async (c) => {
       500
     );
   }
+});
+
+app.post("/start-listening", async (c) => {
+  try {
+    if (isListening) {
+      return c.json({
+        success: false,
+        message: "Already listening for device reports",
+      });
+    }
+
+    await device.connect();
+    isListening = true;
+
+    console.log("🎧 Started persistent listening for device reports");
+
+    return c.json({
+      success: true,
+      message: "Started listening for device reports, check logs",
+      status: "Device connected and listening",
+    });
+  } catch (error) {
+    console.error("❌ Error starting listener:", error);
+    isListening = false;
+    return c.json(
+      {
+        success: false,
+        error: "Failed to start listening",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+app.post("/stop-listening", async (c) => {
+  try {
+    if (!isListening) {
+      return c.json({
+        success: false,
+        message: "Not currently listening",
+      });
+    }
+
+    device.disconnect();
+    isListening = false;
+
+    console.log("🔇 Stopped listening for device reports");
+
+    return c.json({
+      success: true,
+      message: "Stopped listening for device reports",
+    });
+  } catch (error) {
+    console.error("❌ Error stopping listener:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to stop listening",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+app.get("/listening-status", (c) => {
+  return c.json({
+    is_listening: isListening,
+    status: isListening ? "Listening for device reports" : "Not listening",
+  });
 });
 
 const port = Number(process.env.PORT || 3000);
