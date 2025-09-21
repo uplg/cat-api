@@ -84,7 +84,7 @@ The API will be available at `http://localhost:3000`
 curl -X POST http://localhost:3000/feed
 ```
 
-**Example with custom portion:**
+**Example with custom portion (max 12):**
 
 ```bash
 curl -X POST http://localhost:3000/feed \

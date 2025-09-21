@@ -69,6 +69,10 @@ app.post("/feed", async (c) => {
 
     console.log("📤 Sending command manual_feed...");
 
+    if (body.portion > 12) {
+      console.warn("portion value seems limited to 12, this may fail");
+    }
+
     await device.set({ dps: 3, set: body.portion });
 
     device.disconnect();
