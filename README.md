@@ -305,18 +305,21 @@ curl http://localhost:3000/litter-box/status
     "101": 121,
     "102": true,
     "103": 1410,
-    "104": 660,
-    "105": 1,
-    "106": 28,
+    "104": 420,
+    "105": 2,
+    "106": 23,
     "107": false,
     "108": false,
-    "109": "stand_by",
+    "109": "satnd_by",
     "110": false,
     "111": false,
     "112": "half",
+    "113": false,
     "114": 0,
+    "115": false,
     "116": true,
     "117": true,
+    "118": "kg",
     "119": true
   },
   "parsed_status": {
@@ -332,21 +335,21 @@ curl http://localhost:3000/litter-box/status
       "end_time_formatted": "07:00"
     },
     "sensors": {
-      "defecation_duration": 23
+      "defecation_duration": 23,
+      "defecation_frequency": 2,
+      "fault_alarm": 0
     },
     "system": {
       "state": "satnd_by",
       "cleaning_in_progress": false,
-      "maintenance_required": false,
-      "kitten_mode": false,
-      "automatic_homing": true,
-      "defecation_frequency": 2,
-      "hourly_cycle_count": 0
+      "maintenance_required": false
     },
     "settings": {
       "lighting": true,
       "child_lock": false,
-      "prompt_sound": true
+      "prompt_sound": true,
+      "kitten_mode": false,
+      "automatic_homing": true
     },
     "litter_level": "half"
   },
@@ -382,24 +385,27 @@ The litter box uses the following DPS (Data Point System) values:
 
 > **Note:** Mappings marked with ⚠️ are probably incorrect based on observed behavior and need further investigation.
 
-| DPS | Description             | Type    | Example                                                                               |
-| --- | ----------------------- | ------- | ------------------------------------------------------------------------------------- |
-| 101 | Clean delay             | Number  | 121 (seconds, 2:01)                                                                   |
-| 102 | Sleep mode active       | Boolean | true                                                                                  |
-| 103 | Sleep mode start time   | Number  | 1410 (minutes since midnight, 23:30)                                                  |
-| 104 | Sleep mode end time     | Number  | 420 (minutes since midnight, 07:00)                                                   |
-| 105 | Defecation frequency    | Number  | 2 (daily count of defecations) |
+| DPS | Description             | Type    | Example                                            |
+| --- | ----------------------- | ------- | -------------------------------------------------- |
+| 101 | Clean delay             | Number  | 121 (seconds, 2:01)                                |
+| 102 | Sleep mode active       | Boolean | true                                               |
+| 103 | Sleep mode start time   | Number  | 1410 (minutes since midnight, 23:30)               |
+| 104 | Sleep mode end time     | Number  | 420 (minutes since midnight, 07:00)                |
+| 105 | Defecation frequency    | Number  | 2 (daily count of defecations)                     |
 | 106 | Defecation duration     | Number  | 23 (seconds - timer measuring defecation duration) |
-| 107 | Cleaning in progress    | Boolean | false                                                                                 |
-| 108 | Maintenance required    | Boolean | false                                                                                 |
-| 109 | System state            | String  | "stand_by"                                                                            |
-| 110 | Child lock              | Boolean | false                                                                                 |
-| 111 | Kitten mode active      | Boolean | false                                                                                 |
-| 112 | Litter level            | String  | "half"                                                                                |
-| 114 | Cycle count ⚠️          | Number  | 0 (probably wrong - mapped as hourly_cycle_count but doesn't increment)               |
-| 116 | Lighting enabled        | Boolean | true                                                                                  |
-| 117 | Prompt sound enabled    | Boolean | true                                                                                  |
-| 119 | Automatic homing active | Boolean | true                                                                                  |
+| 107 | Cleaning in progress    | Boolean | false                                              |
+| 108 | Maintenance required    | Boolean | false                                              |
+| 109 | System state            | String  | "satnd_by", "cat_inside", "clumping", "cleaning"   |
+| 110 | Child lock              | Boolean | false                                              |
+| 111 | Kitten mode active      | Boolean | false                                              |
+| 112 | Litter level            | String  | "half", "full"                                     |
+| 113 | Reset sand level        | Boolean | false                                              |
+| 114 | Alarme de défaut        | Number  | 0                                                  |
+| 115 | Reset factory settings  | Boolean | false                                              |
+| 116 | Lighting enabled        | Boolean | true                                               |
+| 117 | Prompt sound enabled    | Boolean | true                                               |
+| 118 | Weight unit             | String  | "kg"                                               |
+| 119 | Automatic homing active | Boolean | true                                               |
 
 ## 🔍 Troubleshooting
 

@@ -310,8 +310,8 @@ app.get("/litter-box/status", async (c) => {
 
     // Get all litter box related DPS
     const litterBoxDps = [
-      101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 114, 116, 117,
-      119,
+      101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115,
+      116, 117, 118, 119,
     ];
     const status: any = {};
 
@@ -359,21 +359,23 @@ app.get("/litter-box/status", async (c) => {
       sensors: {
         defecation_duration: status[106] || 0,
         defecation_frequency: status[105] || 0,
-        // @TODO: probably wrong
-        hourly_cycle_count: status[114] || 0,
+        fault_alarm: status[114] || 0,
       },
       system: {
+        // @note values: satnd_by, cat_inside, clumping, cleaning
+        // @note: typo in stand_by is not by me but by tuya
         state: status[109] || "unknown",
         cleaning_in_progress: status[107] || false,
         maintenance_required: status[108] || false,
-        kitten_mode: status[111] || false,
-        automatic_homing: status[119] || false,
       },
       settings: {
         lighting: status[116] || false,
         child_lock: status[110] || false,
         prompt_sound: status[117] || false,
+        kitten_mode: status[111] || false,
+        automatic_homing: status[119] || false,
       },
+      // @note values: half, full
       litter_level: status[112] || "unknown",
     };
 
