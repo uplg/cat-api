@@ -1,6 +1,6 @@
 # 🐱 Cat API
 
-A Node.js multi-device API built with Hono for monitoring and controlling locally Tuya-based smart cat feeders and automatic litter boxes. This API provides comprehensive device management, meal plan control, litter monitoring, and real-time device scanning across multiple devices simultaneously.
+A Node.js multi-device API built with Elysia for monitoring and controlling locally Tuya-based smart cat feeders and automatic litter boxes. This API provides comprehensive device management, meal plan control, litter monitoring, and real-time device scanning across multiple devices simultaneously.
 
 ## 🚀 Features
 
@@ -580,7 +580,7 @@ The API includes comprehensive logging. Check the console output for:
 
 ## 🏗️ Architecture
 
-- **Framework**: Hono (lightweight web framework)
+- **Framework**: Elysia (fast and ergonomic framework leveraging bun)
 - **Device Communication**: TuyAPI for Tuya device protocol
 - **Meal Plan Encoding**: Custom Base64 binary format
 - **Real-time**: Event-driven architecture with persistent connections
