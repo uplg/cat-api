@@ -301,27 +301,6 @@ curl http://localhost:3000/litter-box/status
 ```json
 {
   "success": true,
-  "raw_dps": {
-    "101": 121,
-    "102": true,
-    "103": 1410,
-    "104": 420,
-    "105": 2,
-    "106": 23,
-    "107": false,
-    "108": false,
-    "109": "satnd_by",
-    "110": false,
-    "111": false,
-    "112": "half",
-    "113": false,
-    "114": 0,
-    "115": false,
-    "116": true,
-    "117": true,
-    "118": "kg",
-    "119": true
-  },
   "parsed_status": {
     "clean_delay": {
       "seconds": 121,
@@ -352,6 +331,27 @@ curl http://localhost:3000/litter-box/status
       "automatic_homing": true
     },
     "litter_level": "half"
+  },
+  "raw_dps": {
+    "101": 121,
+    "102": true,
+    "103": 1410,
+    "104": 420,
+    "105": 2,
+    "106": 23,
+    "107": false,
+    "108": false,
+    "109": "satnd_by",
+    "110": false,
+    "111": false,
+    "112": "half",
+    "113": false,
+    "114": 0,
+    "115": false,
+    "116": true,
+    "117": true,
+    "118": "kg",
+    "119": true
   },
   "message": "Litter box status retrieved successfully"
 }

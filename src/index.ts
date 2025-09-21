@@ -381,8 +381,8 @@ app.get("/litter-box/status", async (c) => {
 
     return c.json({
       success: true,
-      raw_dps: status,
       parsed_status: parsedStatus,
+      raw_dps: status,
       message: "Litter box status retrieved successfully",
     });
   } catch (error) {
