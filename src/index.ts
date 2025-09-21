@@ -60,18 +60,22 @@ app.get("/", (c) => {
 });
 
 app.post("/feed", async (c) => {
+  let body: { portion: number } = { portion: 1 };
+  try {
+    body = await c.req.json();
+  } catch (error) {}
   try {
     await device.connect();
 
     console.log("📤 Sending command manual_feed...");
 
-    await device.set({ dps: 3, set: 1 });
+    await device.set({ dps: 3, set: body.portion });
 
     device.disconnect();
 
     return c.json({
       success: true,
-      message: "Command manual_feed sent with value: 1",
+      message: `Command manual_feed sent with value: ${body.portion}`,
     });
   } catch (error) {
     console.error("❌ Error:", error);

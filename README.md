@@ -78,10 +78,18 @@ The API will be available at `http://localhost:3000`
 | ------ | -------- | ---------------------- |
 | `POST` | `/feed`  | Trigger manual feeding |
 
-**Example:**
+**Example (1 portion):**
 
 ```bash
 curl -X POST http://localhost:3000/feed
+```
+
+**Example with custom portion:**
+
+```bash
+curl -X POST http://localhost:3000/feed \
+  -H "Content-Type: application/json" \
+  -d '{"portion": 2}'
 ```
 
 ### 📊 Device Information
