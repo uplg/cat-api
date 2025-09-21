@@ -383,8 +383,6 @@ curl -X POST http://localhost:3000/litter-box/clean
 
 The litter box uses the following DPS (Data Point System) values:
 
-> **Note:** Mappings marked with ⚠️ are probably incorrect based on observed behavior and need further investigation.
-
 | DPS | Description             | Type    | Example                                            |
 | --- | ----------------------- | ------- | -------------------------------------------------- |
 | 101 | Clean delay             | Number  | 121 (seconds, 2:01)                                |
