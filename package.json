@@ -1,0 +1,36 @@
+{
+  "name": "cat-monitor-api",
+  "version": "1.0.0",
+  "description": "API Hono.js pour contrôler le distributeur de nourriture Catit Smart Feeder via Tuya",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "tuya",
+    "catit",
+    "smart-feeder",
+    "hono",
+    "api"
+  ],
+  "author": "Leonard",
+  "license": "MIT",
+  "dependencies": {
+    "@hono/node-server": "^1.19.3",
+    "@tuya/tuya-connector-nodejs": "^2.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "hono": "^4.9.8",
+    "tuyapi": "github:codetheweb/tuyapi"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
