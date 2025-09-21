@@ -179,12 +179,12 @@ curl -X POST http://localhost:3000/devices/disconnect
 
 ### 🍽️ Feeder Control (Multi-Device)
 
-| Method | Endpoint                        | Description                    |
-| ------ | ------------------------------- | ------------------------------ |
-| `POST` | `/devices/:id/feeder/feed`      | Trigger manual feeding         |
-| `GET`  | `/devices/:id/feeder/status`    | Get feeder status              |
-| `GET`  | `/devices/:id/feeder/meal-plan` | Get current meal plan (cached) |
-| `POST` | `/devices/:id/feeder/meal-plan` | Set new meal plan              |
+| Method | Endpoint                        | Description                                                                                 |
+| ------ | ------------------------------- | ------------------------------------------------------------------------------------------- |
+| `POST` | `/devices/:id/feeder/feed`      | Trigger manual feeding                                                                      |
+| `GET`  | `/devices/:id/feeder/status`    | Get feeder status                                                                           |
+| `GET`  | `/devices/:id/feeder/meal-plan` | Get current meal plan (cached may be outdated if updated outside the API eg. SmartLife App) |
+| `POST` | `/devices/:id/feeder/meal-plan` | Set new meal plan                                                                           |
 
 #### Manual Feeding
 
