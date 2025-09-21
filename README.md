@@ -130,13 +130,13 @@ The API will be available at `http://localhost:3000`
 
 ### 📱 Device Management
 
-| Method | Endpoint                | Description                              |
-| ------ | ----------------------- | ---------------------------------------- |
-| `GET`  | `/devices`              | List all configured devices              |
-| `POST` | `/devices/connect`      | Connect to all devices (monitor devices) |
-| `POST` | `/devices/disconnect`   | Disconnect from all devices              |
-| `GET`  | `/devices/:id/status`   | Get specific device status               |
-| `GET`  | `/devices/:id/scan-dps` | Scan device data points (DPS)            |
+| Method | Endpoint                | Description                                     |
+| ------ | ----------------------- | ----------------------------------------------- |
+| `GET`  | `/devices`              | List all configured devices                     |
+| `POST` | `/devices/connect`      | Connect to all devices (monitor devices events) |
+| `POST` | `/devices/disconnect`   | Disconnect from all devices                     |
+| `GET`  | `/devices/:id/status`   | Get specific device status                      |
+| `GET`  | `/devices/:id/scan-dps` | Scan device data points (DPS) @debug            |
 
 #### List All Devices
 
