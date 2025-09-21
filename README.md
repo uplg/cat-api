@@ -4,12 +4,21 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
 
 ## 🚀 Features
 
+### Feeders :
+
 - **Meal Plan Management**: Create, read, and update feeding schedules with Base64 encoding/decoding
 - **Manual Feeding**: Trigger immediate feeding sessions
+- **Feed History**: Retrieve detailed feeding logs (only last one, you need to save it somewhere to get an history like in the SmartLife app)
+
+### Litters :
+
+- **Litter Status**: Get current litter box status (e.g., litter level, cleaning in progress)
+- **Basic litter management**: Start cleaning process
+
+### Analysis :
+
 - **Real-time Monitoring**: Listen for device reports and feeding activities
 - **Device Scanning**: Discover available device data points (DPS)
-- **Feed History**: Retrieve detailed feeding logs (only last one, you need to save it somewhere to get an history like in the SmartLife app)
-- **Litter Status**: Get current litter box status (e.g., litter level, cleaning in progress)
 
 ## 📋 Prerequisites
 
