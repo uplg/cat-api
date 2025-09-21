@@ -1,6 +1,6 @@
 # 🐱 Cat API
 
-A Node.js API built with Hono for monitoring and controlling locally Tuya-based smart cat feeders. This API provides comprehensive meal plan management, feeding controls, and real-time device monitoring.
+A Node.js API built with Hono for monitoring and controlling locally Tuya-based smart cat feeders / automatic litters. This API provides comprehensive meal plan management, feeding controls, litter status and real-time device monitoring.
 
 ## 🚀 Features
 
@@ -9,6 +9,7 @@ A Node.js API built with Hono for monitoring and controlling locally Tuya-based 
 - **Real-time Monitoring**: Listen for device reports and feeding activities
 - **Device Scanning**: Discover available device data points (DPS)
 - **Feed History**: Retrieve detailed feeding logs (only last one, you need to save it somewhere to get an history like in the SmartLife app)
+- **Litter Status**: Get current litter box status (e.g., litter level, cleaning in progress)
 
 ## 📋 Prerequisites
 
@@ -278,6 +279,127 @@ curl "http://localhost:3000/scan-dps?start=1&end=150&timeout=1000"
 
 
 ```
+
+## 🧹 Cat Litter Box Control
+
+The API includes specialized endpoints for controlling Tuya-based smart cat litter boxes. These endpoints provide comprehensive monitoring and control capabilities.
+
+### 📊 Status Monitoring
+
+| Endpoint             | Method | Description                                    |
+| -------------------- | ------ | ---------------------------------------------- |
+| `/litter-box/status` | GET    | Get complete litter box status and sensor data |
+
+#### Get litter box status
+
+```bash
+curl http://localhost:3000/litter-box/status
+```
+
+**Response format:**
+
+```json
+{
+  "success": true,
+  "raw_dps": {
+    "101": 121,
+    "102": true,
+    "103": 1410,
+    "104": 660,
+    "105": 1,
+    "106": 28,
+    "107": false,
+    "108": false,
+    "109": "stand_by",
+    "110": false,
+    "111": false,
+    "112": "half",
+    "114": 0,
+    "116": true,
+    "117": true,
+    "119": true
+  },
+  "parsed_status": {
+    "clean_delay": {
+      "seconds": 121,
+      "formatted": "2:01"
+    },
+    "sleep_mode": {
+      "enabled": true,
+      "start_time_minutes": 1410,
+      "start_time_formatted": "23:30",
+      "end_time_minutes": 420,
+      "end_time_formatted": "07:00"
+    },
+    "sensors": {
+      "temperature": 28
+    },
+    "system": {
+      "state": "satnd_by",
+      "cleaning_in_progress": false,
+      "maintenance_required": false,
+      "kitten_mode": false,
+      "automatic_homing": true,
+      "daily_cycle_count": 1,
+      "hourly_cycle_count": 0
+    },
+    "settings": {
+      "lighting": true,
+      "child_lock": false,
+      "prompt_sound": true
+    },
+    "litter_level": "half"
+  },
+  "message": "Litter box status retrieved successfully"
+}
+```
+
+### 🧹 Cleaning Control
+
+| Endpoint            | Method | Description                   |
+| ------------------- | ------ | ----------------------------- |
+| `/litter-box/clean` | POST   | Trigger manual cleaning cycle |
+
+#### Trigger manual cleaning
+
+```bash
+curl -X POST http://localhost:3000/litter-box/clean
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Manual cleaning cycle triggered",
+  "action": "Cleaning started"
+}
+```
+
+### 📋 DPS Reference
+
+The litter box uses the following DPS (Data Point System) values:
+
+> **Note:** Mappings marked with ⚠️ are probably incorrect based on observed behavior and need further investigation.
+
+| DPS | Description             | Type    | Example                                                                               |
+| --- | ----------------------- | ------- | ------------------------------------------------------------------------------------- |
+| 101 | Clean delay             | Number  | 121 (seconds, 2:01)                                                                   |
+| 102 | Sleep mode active       | Boolean | true                                                                                  |
+| 103 | Sleep mode start time   | Number  | 1410 (minutes since midnight, 23:30)                                                  |
+| 104 | Sleep mode end time     | Number  | 420 (minutes since midnight, 07:00)                                                   |
+| 105 | Operating mode ⚠️       | Number  | 1 (probably wrong - mapped as daily_cycle_count but doesn't increment)                |
+| 106 | Temperature ⚠️          | Number  | 28 (probably wrong - drops from 28→15 when cat enters, likely weight/presence sensor) |
+| 107 | Cleaning in progress    | Boolean | false                                                                                 |
+| 108 | Maintenance required    | Boolean | false                                                                                 |
+| 109 | System state            | String  | "stand_by"                                                                            |
+| 110 | Child lock              | Boolean | false                                                                                 |
+| 111 | Kitten mode active      | Boolean | false                                                                                 |
+| 112 | Litter level            | String  | "half"                                                                                |
+| 114 | Cycle count ⚠️          | Number  | 0 (probably wrong - mapped as hourly_cycle_count but doesn't increment)               |
+| 116 | Lighting enabled        | Boolean | true                                                                                  |
+| 117 | Prompt sound enabled    | Boolean | true                                                                                  |
+| 119 | Automatic homing active | Boolean | true                                                                                  |
 
 ## 🔍 Troubleshooting
 

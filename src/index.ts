@@ -55,6 +55,9 @@ app.get("/", (c) => {
       "POST /stop-listening - Stop persistent connection",
       "GET /listening-status - Check if currently listening for reports",
       "GET /scan-dps - Scan DPS range (params: ?start=1&end=255&timeout=100)",
+      "GET /litter-box/status - Get complete litter box status and sensors",
+      "POST /litter-box/clean - Trigger manual cleaning cycle",
+      "POST /litter-box/settings - Update litter box settings (auto-clean, lighting, etc.)",
     ],
   });
 });
@@ -296,6 +299,130 @@ app.get("/listening-status", (c) => {
     is_listening: isListening,
     status: isListening ? "Listening for device reports" : "Not listening",
   });
+});
+
+// Cat Litter Box endpoints
+app.get("/litter-box/status", async (c) => {
+  try {
+    await device.connect();
+
+    console.log("📊 Getting litter box status...");
+
+    // Get all litter box related DPS
+    const litterBoxDps = [
+      101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 114, 116, 117,
+      119,
+    ];
+    const status: any = {};
+
+    for (const dps of litterBoxDps) {
+      try {
+        const value = await device.get({ dps });
+        if (value !== undefined && value !== null) {
+          status[dps] = value;
+        }
+      } catch (e) {
+        console.warn(`Could not read DPS ${dps}`);
+      }
+    }
+
+    device.disconnect();
+
+    // Helper function to convert minutes since midnight to HH:MM format
+    const minutesToTime = (minutes: number): string => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours.toString().padStart(2, "0")}:${mins
+        .toString()
+        .padStart(2, "0")}`;
+    };
+
+    const secondsToMinSec = (totalSeconds: number): string => {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    };
+
+    // Parse and format the status
+    const parsedStatus = {
+      clean_delay: {
+        seconds: status[101] || 0,
+        formatted: secondsToMinSec(status[101] || 0),
+      },
+      sleep_mode: {
+        enabled: status[102] || false,
+        start_time_minutes: status[103] || 0,
+        start_time_formatted: minutesToTime(status[103] || 0),
+        end_time_minutes: status[104] || 0,
+        end_time_formatted: minutesToTime(status[104] || 0),
+      },
+      sensors: {
+        temperature: status[106] || 0,
+      },
+      system: {
+        state: status[109] || "unknown",
+        cleaning_in_progress: status[107] || false,
+        maintenance_required: status[108] || false,
+        kitten_mode: status[111] || false,
+        automatic_homing: status[119] || false,
+        // @TODO: maybe daily cycle count, need check
+        daily_cycle_count: status[105] || 0,
+        // @TODO: maybe hour cycle count
+        hourly_cycle_count: status[114] || 0,
+      },
+      settings: {
+        lighting: status[116] || false,
+        child_lock: status[110] || false,
+        prompt_sound: status[117] || false,
+      },
+      litter_level: status[112] || "unknown",
+    };
+
+    return c.json({
+      success: true,
+      raw_dps: status,
+      parsed_status: parsedStatus,
+      message: "Litter box status retrieved successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error getting litter box status:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to get litter box status",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
+});
+
+app.post("/litter-box/clean", async (c) => {
+  try {
+    await device.connect();
+
+    console.log("🧹 Triggering manual cleaning cycle...");
+
+    await device.set({ dps: 107, set: true });
+
+    device.disconnect();
+
+    return c.json({
+      success: true,
+      message: "Manual cleaning cycle triggered",
+      action: "Cleaning started",
+    });
+  } catch (error) {
+    console.error("❌ Error triggering cleaning:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to trigger cleaning cycle",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
+  }
 });
 
 // @note: debug
