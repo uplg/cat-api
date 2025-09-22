@@ -25,6 +25,7 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
           version: device.config.version,
           connected: device.isConnected,
           last_data: device.lastData,
+          parsed_data: device.parsedData,
         }));
 
         return {

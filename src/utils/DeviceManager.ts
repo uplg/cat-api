@@ -1,6 +1,8 @@
 import TuyAPI, { DPSObject } from "tuyapi";
 import fs from "node:fs";
 import path from "node:path";
+import { parseFeederStatus } from "./Feeder";
+import { parseLitterBoxStatus } from "./Litter";
 
 export interface DeviceConfig {
   name: string;
@@ -18,7 +20,11 @@ export interface DeviceInstance {
   config: DeviceConfig;
   api: TuyAPI;
   isConnected: boolean;
-  lastData: Record<string, any>;
+  lastData: DPSObject;
+  parsedData:
+    | ReturnType<typeof parseFeederStatus>
+    | ReturnType<typeof parseLitterBoxStatus>
+    | {};
   type: "feeder" | "litter-box" | "unknown";
 }
 
@@ -77,7 +83,8 @@ export class DeviceManager {
           config,
           api,
           isConnected: false,
-          lastData: {},
+          lastData: { dps: {} },
+          parsedData: {},
           type: deviceType,
         };
 
@@ -98,6 +105,15 @@ export class DeviceManager {
         api.on("data", (data) => {
           console.log(`📡 Data from ${config.name}:`, data);
           deviceInstance.lastData = { ...deviceInstance.lastData, ...data };
+          if (deviceInstance.type === "feeder") {
+            deviceInstance.parsedData = parseFeederStatus(
+              deviceInstance.lastData
+            );
+          } else if (deviceInstance.type === "litter-box") {
+            deviceInstance.parsedData = parseLitterBoxStatus(
+              deviceInstance.lastData
+            );
+          }
 
           this.handleDeviceData(deviceInstance, data);
         });
@@ -110,7 +126,7 @@ export class DeviceManager {
     }
   }
 
-  private handleDeviceData(device: DeviceInstance, data: any): void {
+  private handleDeviceData(device: DeviceInstance, data: DPSObject): void {
     if (!data.dps) return;
 
     switch (device.type) {
@@ -121,7 +137,7 @@ export class DeviceManager {
             data.dps["1"]
           );
           // If DPS 1 (meal plan) is updated, cache it
-          this.setMealPlan(device.config.id, data.dps["1"]);
+          this.setMealPlan(device.config.id, data.dps["1"] as string);
         }
         if (data.dps["3"]) {
           console.log(
@@ -205,7 +221,7 @@ export class DeviceManager {
   async sendCommand(
     deviceId: string,
     dps: number,
-    value: any,
+    value: string | number | boolean,
     disconnectAfter: boolean = true
   ): Promise<void> {
     const device = this.devices.get(deviceId);

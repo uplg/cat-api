@@ -15,7 +15,7 @@ export function parseFeederStatus(status: DPSObject) {
 
   // Parse feed history if available (DPS 104)
   const historyData = rawDps?.["104"];
-  let history: any = null;
+  let history = null;
   if (typeof historyData === "string") {
     // NOTE: Format "R:0  C:2  T:1758445204"
     const parts = historyData.split("  ");
@@ -28,6 +28,7 @@ export function parseFeederStatus(status: DPSObject) {
         count: parts[1]?.replace("C:", "") || null,
         // time last serving
         timestamp: parts[2]?.replace("T:", "") || null,
+        timestamp_readable: "",
       },
     };
 
