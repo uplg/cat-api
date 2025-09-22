@@ -122,7 +122,7 @@ export const BaseResponseSchema = t.Object({
   success: t.Boolean({ description: "Whether the operation was successful" }),
   message: t.Optional(t.String({ description: "Response message" })),
   error: t.Optional(t.String({ description: "Error message if operation failed" })),
-});
+}, { additionalProperties: true });
 
 export const DeviceInfoSchema = t.Object({
   id: t.String({ description: "Device ID" }),
