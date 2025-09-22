@@ -77,7 +77,7 @@ export function parseFeederStatus(status: DPSObject) {
     },
     system: {
       fault_status: Boolean(rawDps["14"]), // DPS 14: Fault alarm (1 = fault, 0 = ok)
-      powered_by: poweredBy, // DPS 105: Powered by (0 = battery, 1 = AC)
+      powered_by: poweredBy, // DPS 105: Powered by (0 = AC, 1 = Battery ?)
       ip_address: rawDps["107"] ?? "Unknown", // DPS 107: IP address
     },
     history,
