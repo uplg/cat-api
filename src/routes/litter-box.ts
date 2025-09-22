@@ -2,7 +2,12 @@ import { Elysia } from "elysia";
 import { DeviceManager } from "../utils/DeviceManager";
 import { parseLitterBoxStatus } from "../utils/Litter";
 import { timeToMinutes } from "../utils/formatters";
-import { LitterBoxSettingsSchema } from "../schemas";
+import { 
+  LitterBoxSettingsSchema,
+  LitterBoxStatusResponseSchema,
+  LitterBoxCleanResponseSchema,
+  LitterBoxSettingsResponseSchema
+} from "../schemas";
 
 /**
  * Litter box routes
@@ -55,6 +60,8 @@ export function createLitterBoxRoutes(deviceManager: DeviceManager) {
             error: error instanceof Error ? error.message : "Unknown error",
           };
         }
+      }, {
+        response: LitterBoxStatusResponseSchema
       })
 
       .post("/:deviceId/litter-box/clean", async ({ params, set }) => {
@@ -95,6 +102,8 @@ export function createLitterBoxRoutes(deviceManager: DeviceManager) {
             error: error instanceof Error ? error.message : "Unknown error",
           };
         }
+      }, {
+        response: LitterBoxCleanResponseSchema
       })
 
       .post(
@@ -250,6 +259,7 @@ export function createLitterBoxRoutes(deviceManager: DeviceManager) {
         },
         {
           body: LitterBoxSettingsSchema,
+          response: LitterBoxSettingsResponseSchema
         }
       )
   );

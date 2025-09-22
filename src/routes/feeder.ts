@@ -2,7 +2,14 @@ import { Elysia } from "elysia";
 import { DeviceManager } from "../utils/DeviceManager";
 import { MealPlan, MealPlanEntry } from "../utils/MealPlan";
 import { parseFeederStatus } from "../utils/Feeder";
-import { FeedRequestSchema, MealPlanSchema } from "../schemas";
+import {
+  FeedRequestSchema,
+  MealPlanSchema,
+  FeederFeedResponseSchema,
+  FeederStatusResponseSchema,
+  MealPlanResponseSchema,
+  MealPlanUpdateResponseSchema,
+} from "../schemas";
 
 /**
  * Feeder routes
@@ -64,95 +71,108 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
         },
         {
           body: FeedRequestSchema,
+          response: FeederFeedResponseSchema,
         }
       )
 
-      .get("/:deviceId/feeder/status", async ({ params, set }) => {
-        const deviceId = params.deviceId;
+      .get(
+        "/:deviceId/feeder/status",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
 
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
+
+            if (device.type !== "feeder") {
+              set.status = 400;
+              return {
+                success: false,
+                error: "Device is not a feeder",
+              };
+            }
+
+            const status = await deviceManager.getDeviceStatus(deviceId);
+
+            return {
+              success: true,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+              },
+              parsed_status: parseFeederStatus(status),
+              raw_dps: status.dps,
+              message: "Feeder status retrieved successfully",
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Device not found",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          if (device.type !== "feeder") {
-            set.status = 400;
-            return {
-              success: false,
-              error: "Device is not a feeder",
-            };
-          }
-
-          const status = await deviceManager.getDeviceStatus(deviceId);
-
-          return {
-            success: true,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-            },
-            parsed_status: parseFeederStatus(status),
-            raw_dps: status.dps,
-            message: "Feeder status retrieved successfully",
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          response: FeederStatusResponseSchema,
         }
-      })
+      )
 
-      .get("/:deviceId/feeder/meal-plan", async ({ params, set }) => {
-        const deviceId = params.deviceId;
+      .get(
+        "/:deviceId/feeder/meal-plan",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
 
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
+
+            if (device.type !== "feeder") {
+              set.status = 400;
+              return {
+                success: false,
+                error: "Device is not a feeder",
+              };
+            }
+
+            // Get cached meal plan
+            const cachedMealPlan = deviceManager.getMealPlan(deviceId);
+
+            return {
+              success: true,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+              },
+              decoded: cachedMealPlan ? MealPlan.decode(cachedMealPlan) : null,
+              meal_plan: cachedMealPlan,
+              message: cachedMealPlan
+                ? "Current meal plan retrieved from cache"
+                : "Meal plan not available. Update it first to cache it, or connect to get real-time updates.",
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Device not found",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          if (device.type !== "feeder") {
-            set.status = 400;
-            return {
-              success: false,
-              error: "Device is not a feeder",
-            };
-          }
-
-          // Get cached meal plan
-          const cachedMealPlan = deviceManager.getMealPlan(deviceId);
-
-          return {
-            success: true,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-            },
-            decoded: cachedMealPlan ? MealPlan.decode(cachedMealPlan) : null,
-            meal_plan: cachedMealPlan,
-            message: cachedMealPlan
-              ? "Current meal plan retrieved from cache"
-              : "Meal plan not available. Update it first to cache it, or connect to get real-time updates.",
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          response: MealPlanResponseSchema,
         }
-      })
+      )
 
       .post(
         "/:deviceId/feeder/meal-plan",
@@ -232,6 +252,7 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
         },
         {
           body: MealPlanSchema,
+          response: MealPlanUpdateResponseSchema,
         }
       )
   );

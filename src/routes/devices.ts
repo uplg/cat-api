@@ -1,8 +1,16 @@
 import { Elysia } from "elysia";
 import { DeviceManager } from "../utils/DeviceManager";
-import { parseLitterBoxStatus } from "../utils/Litter";
 import { parseFeederStatus } from "../utils/Feeder";
-import { ScanDpsQuerySchema } from "../schemas";
+import { parseLitterBoxStatus } from "../utils/Litter";
+import {
+  ScanDpsQuerySchema,
+  DevicesListResponseSchema,
+  DeviceConnectionResponseSchema,
+  DeviceStatusResponseSchema,
+  DpsScanResponseSchema,
+  DisconnectDeviceSchema,
+  ConnectDeviceSchema,
+} from "../schemas";
 
 /**
  * Device management routes
@@ -14,100 +22,172 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
 
       // 📱 Device Management Endpoints
 
-      .get("/", () => {
-        const devices = deviceManager.getAllDevices().map((device) => ({
-          id: device.config.id,
-          name: device.config.name,
-          type: device.type,
-          product_name: device.config.product_name,
-          model: device.config.model,
-          ip: device.config.ip,
-          version: device.config.version,
-          connected: device.isConnected,
-          last_data: device.lastData,
-          parsed_data: device.parsedData,
-        }));
+      .get(
+        "/",
+        () => {
+          const devices = deviceManager.getAllDevices().map((device) => ({
+            id: device.config.id,
+            name: device.config.name,
+            type: device.type,
+            product_name: device.config.product_name,
+            model: device.config.model,
+            ip: device.config.ip,
+            version: device.config.version,
+            connected: device.isConnected,
+            last_data: device.lastData,
+            parsed_data: device.parsedData,
+          }));
 
-        return {
-          success: true,
-          devices,
-          total: devices.length,
-          message: "Devices list retrieved successfully",
-        };
-      })
-
-      .post("/connect", async ({ set }) => {
-        try {
-          await deviceManager.connectAllDevices();
           return {
             success: true,
-            message: "All devices connection initiated",
+            devices,
+            total: devices.length,
+            message: "Devices list retrieved successfully",
           };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          response: DevicesListResponseSchema,
         }
-      })
+      )
 
-      .post("/disconnect", async ({ set }) => {
-        try {
-          deviceManager.disconnectAllDevices();
-          return {
-            success: true,
-            message: "All devices disconnected",
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
-        }
-      })
-
-      .get("/:deviceId/status", async ({ params, set }) => {
-        const deviceId = params.deviceId;
-
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
+      .post(
+        "/connect",
+        async ({ set }) => {
+          try {
+            await deviceManager.connectAllDevices();
+            return {
+              success: true,
+              message: "All devices connection initiated",
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Device not found",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          const status = await deviceManager.getDeviceStatus(deviceId);
-
-          return {
-            success: true,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-              type: device.type,
-              connected: device.isConnected,
-            },
-            parsed_status:
-              device.type === "litter-box"
-                ? parseLitterBoxStatus(status)
-                : device.type === "feeder"
-                ? parseFeederStatus(status)
-                : null,
-            raw_status: status.dps,
-            message: "Device status retrieved successfully",
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          response: DeviceConnectionResponseSchema,
         }
-      })
+      )
+
+      .post(
+        "/disconnect",
+        async ({ set }) => {
+          try {
+            deviceManager.disconnectAllDevices();
+            return {
+              success: true,
+              message: "All devices disconnected",
+            };
+          } catch (error) {
+            set.status = 500;
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+        {
+          response: DeviceConnectionResponseSchema,
+        }
+      )
+
+      .get(
+        "/:deviceId/connect",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
+          try {
+            await deviceManager.connectDevice(deviceId);
+            return {
+              success: true,
+              message: `Device ${deviceId} connection initiated`,
+            };
+          } catch (error) {
+            set.status = 500;
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+        {
+          query: ConnectDeviceSchema,
+          response: DeviceConnectionResponseSchema,
+        }
+      )
+
+      .get(
+        "/:deviceId/disconnect",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
+          try {
+            await deviceManager.disconnectDevice(deviceId);
+            return {
+              success: true,
+              message: `Device ${deviceId} disconnected`,
+            };
+          } catch (error) {
+            set.status = 500;
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+        {
+          query: DisconnectDeviceSchema,
+          response: DeviceConnectionResponseSchema,
+        }
+      )
+
+      .get(
+        "/:deviceId/status",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
+
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
+
+            const status = await deviceManager.getDeviceStatus(deviceId);
+
+            return {
+              success: true,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+                type: device.type,
+                connected: device.isConnected,
+              },
+              parsed_status:
+                device.type === "litter-box"
+                  ? parseLitterBoxStatus(status)
+                  : device.type === "feeder"
+                  ? parseFeederStatus(status)
+                  : null,
+              raw_status: status.dps,
+              message: "Device status retrieved successfully",
+            };
+          } catch (error) {
+            set.status = 500;
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+        {
+          response: DeviceStatusResponseSchema,
+        }
+      )
 
       // Debug endpoint to scan DPS range for a specific device
       .get(
@@ -206,6 +286,7 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
         },
         {
           query: ScanDpsQuerySchema,
+          response: DpsScanResponseSchema,
         }
       )
   );

@@ -149,13 +149,15 @@ OpenAPI documentation (interactive) is available at `http://localhost:3000/opena
 
 ### 📱 Device Management
 
-| Method | Endpoint                | Description                                     |
-| ------ | ----------------------- | ----------------------------------------------- |
-| `GET`  | `/devices`              | List all configured devices                     |
-| `POST` | `/devices/connect`      | Connect to all devices (monitor devices events) |
-| `POST` | `/devices/disconnect`   | Disconnect from all devices                     |
-| `GET`  | `/devices/:id/status`   | Get specific device status                      |
-| `GET`  | `/devices/:id/scan-dps` | Scan device data points (DPS) @debug            |
+| Method | Endpoint                  | Description                                     |
+| ------ | ------------------------- | ----------------------------------------------- |
+| `GET`  | `/devices`                | List all configured devices                     |
+| `POST` | `/devices/connect`        | Connect to all devices (monitor devices events) |
+| `POST` | `/devices/disconnect`     | Disconnect from all devices                     |
+| `GET`  | `/devices/:id/connect`    | Connect to a specific device                    |
+| `GET`  | `/devices/:id/disconnect` | Disconnect from a specific device               |
+| `GET`  | `/devices/:id/status`     | Get specific device status                      |
+| `GET`  | `/devices/:id/scan-dps`   | Scan device data points (DPS) @debug            |
 
 #### List All Devices
 
@@ -199,6 +201,12 @@ curl -X POST http://localhost:3000/devices/connect
 
 # Disconnect all devices
 curl -X POST http://localhost:3000/devices/disconnect
+
+# Connect a specific device
+curl -X GET http://localhost:3000/devices/bfa64c250eb410189dy9gq/connect
+
+# Disconnect a specific device
+curl -X GET http://localhost:3000/devices/bfa64c250eb410189dy9gq/disconnect
 ```
 
 ### 🍽️ Feeder Control (Multi-Device)
