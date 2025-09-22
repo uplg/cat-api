@@ -40,7 +40,7 @@ export const LitterBoxSettingsSchema = t.Object({
     t.Number({
       minimum: 60,
       maximum: 1800,
-      description: "Delay in seconds before cleaning (0-1800)",
+      description: "Delay in seconds before cleaning (60-1800)",
       default: 120,
     })
   ),
