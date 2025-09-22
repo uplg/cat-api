@@ -7,6 +7,7 @@ export const FeedRequestSchema = t.Object({
       minimum: 1,
       maximum: 10,
       description: "Number of portions to feed (1-10)",
+      default: 1,
     })
   ),
 });
@@ -16,18 +17,30 @@ export const MealPlanSchema = t.Object({
     t.Object({
       days_of_week: t.Array(t.String(), {
         description: "Days of the week for this meal",
+        default: [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday",
+        ],
       }),
       time: t.String({
         pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
         description: "Time in HH:MM format (24h)",
+        default: "08:00",
       }),
       portion: t.Number({
         minimum: 1,
         maximum: 10,
         description: "Number of portions for this meal",
+        default: 1,
       }),
       status: t.Union([t.Literal("Enabled"), t.Literal("Disabled")], {
         description: "Whether this meal is enabled or disabled",
+        default: "Enabled",
       }),
     }),
     { description: "Array of scheduled meals" }
