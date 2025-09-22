@@ -38,26 +38,29 @@ export const MealPlanSchema = t.Object({
 export const LitterBoxSettingsSchema = t.Object({
   clean_delay: t.Optional(
     t.Number({
-      minimum: 0,
+      minimum: 60,
       maximum: 1800,
       description: "Delay in seconds before cleaning (0-1800)",
+      default: 120,
     })
   ),
   sleep_mode: t.Optional(
     t.Object({
       enabled: t.Optional(
-        t.Boolean({ description: "Enable/disable sleep mode" })
+        t.Boolean({ description: "Enable/disable sleep mode", default: false })
       ),
       start_time: t.Optional(
         t.String({
           pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
           description: "Start time in HH:MM format",
+          default: "23:00",
         })
       ),
       end_time: t.Optional(
         t.String({
           pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
           description: "End time in HH:MM format",
+          default: "07:00",
         })
       ),
     })
@@ -65,29 +68,35 @@ export const LitterBoxSettingsSchema = t.Object({
   preferences: t.Optional(
     t.Object({
       child_lock: t.Optional(
-        t.Boolean({ description: "Enable/disable child lock" })
+        t.Boolean({ description: "Enable/disable child lock", default: false })
       ),
       kitten_mode: t.Optional(
-        t.Boolean({ description: "Enable/disable kitten mode" })
+        t.Boolean({ description: "Enable/disable kitten mode", default: false })
       ),
       lighting: t.Optional(
-        t.Boolean({ description: "Enable/disable lighting" })
+        t.Boolean({ description: "Enable/disable lighting", default: true })
       ),
       prompt_sound: t.Optional(
-        t.Boolean({ description: "Enable/disable prompt sounds" })
+        t.Boolean({
+          description: "Enable/disable prompt sounds",
+          default: true,
+        })
       ),
       automatic_homing: t.Optional(
-        t.Boolean({ description: "Enable/disable automatic homing" })
+        t.Boolean({
+          description: "Enable/disable automatic homing",
+          default: true,
+        })
       ),
     })
   ),
   actions: t.Optional(
     t.Object({
       reset_sand_level: t.Optional(
-        t.Boolean({ description: "Reset sand level indicator" })
+        t.Boolean({ description: "Reset sand level indicator", default: false })
       ),
       reset_factory_settings: t.Optional(
-        t.Boolean({ description: "Reset to factory settings" })
+        t.Boolean({ description: "Reset to factory settings", default: false })
       ),
     })
   ),
