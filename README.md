@@ -178,13 +178,18 @@ curl http://localhost:3000/devices
       "ip": "192.168.1.174",
       "version": "3.4",
       "connected": false,
-      "last_data": {}
+      "last_data": {
+        "dps": {}
+      },
+      "parsed_data": {}
     }
   ],
   "total": 1,
   "message": "Devices list retrieved successfully"
 }
 ```
+
+(last_data and parsed_data are available only if you connect devices first)
 
 #### Connect/Disconnect Devices
 
