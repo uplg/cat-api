@@ -115,9 +115,7 @@ export class DeviceManager {
         JSON.stringify(cache, null, 2),
         "utf8"
       );
-      console.log(
-        `💾 Saved device cache for ${this.deviceCache.size} devices`
-      );
+      console.log(`💾 Saved device cache for ${this.deviceCache.size} devices`);
     } catch (error) {
       console.error("❌ Failed to save device cache:", error);
     }
@@ -814,9 +812,7 @@ export class DeviceManager {
           for (const [dpsId, value] of Object.entries(cachedDPS)) {
             if (response.dps[dpsId] === undefined) {
               response.dps[dpsId] = value as string | number | boolean;
-              console.log(
-                `📦 Added cached DPS ${dpsId}=${value} to response`
-              );
+              console.log(`📦 Added cached DPS ${dpsId}=${value} to response`);
             }
           }
         }
@@ -889,5 +885,4 @@ export class DeviceManager {
       }
     }
   }
-
 }

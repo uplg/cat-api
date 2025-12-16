@@ -78,13 +78,13 @@ function DaySelector({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1 sm:gap-1">
         {DAYS_OF_WEEK.map((day) => (
           <button
             key={day.full}
             type="button"
             onClick={() => toggleDay(day.full)}
-            className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-all ${
+            className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full text-xs sm:text-sm font-medium transition-all ${
               selectedDays.includes(day.full)
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -94,7 +94,7 @@ function DaySelector({
           </button>
         ))}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
           {t('common.all')}
         </Button>
@@ -311,9 +311,8 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
   return (
     <div className="space-y-4">
       {/* Header with save button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold">{t('feeder.mealSchedule')}</h3>
           <p className="text-sm text-muted-foreground">
             {mealPlan.length}/10 {t('mealPlan.mealsScheduled', { count: mealPlan.length }).split(' ').slice(1).join(' ')}
           </p>
@@ -321,7 +320,7 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
         <div className="flex gap-2">
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" disabled={mealPlan.length >= 10}>
+              <Button variant="outline" disabled={mealPlan.length >= 10} className="flex-1 sm:flex-none">
                 <Plus className="mr-2 h-4 w-4" />
                 {t('common.add')}
               </Button>
@@ -346,6 +345,7 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
           <Button
             onClick={() => saveMutation.mutate(mealPlan)}
             disabled={!hasChanges || saveMutation.isPending}
+            className="flex-1 sm:flex-none"
           >
             {saveMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -388,23 +388,23 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
                   meal.status === 'Disabled' ? 'opacity-60' : ''
                 }`}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     {/* Time display */}
                     <div
-                      className={`flex h-16 w-16 flex-col items-center justify-center rounded-xl ${
+                      className={`flex h-12 w-full sm:h-16 sm:w-16 flex-row sm:flex-col items-center justify-center gap-2 sm:gap-0 rounded-xl ${
                         meal.status === 'Enabled'
                           ? 'bg-primary/10 text-primary'
                           : 'bg-muted text-muted-foreground'
                       }`}
                     >
-                      <Clock className="h-5 w-5 mb-1" />
-                      <span className="text-lg font-bold">{meal.time}</span>
+                      <Clock className="h-4 w-4 sm:h-5 sm:w-5 sm:mb-1" />
+                      <span className="text-base sm:text-lg font-bold">{meal.time}</span>
                     </div>
 
                     {/* Details */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <Badge variant="outline">
                           <Utensils className="mr-1 h-3 w-3" />
                           {t('feeder.portion', { count: meal.portion })}
@@ -421,47 +421,49 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-1 border-t pt-3 sm:border-0 sm:pt-0">
                       <Switch
                         checked={meal.status === 'Enabled'}
                         onCheckedChange={() => toggleMealStatus(originalIndex)}
                       />
                       
-                      <Dialog
-                        open={editingIndex === originalIndex}
-                        onOpenChange={(open) => setEditingIndex(open ? originalIndex : null)}
-                      >
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                              <Edit2 className="h-5 w-5" />
-                              {t('mealPlan.editMeal')}
-                            </DialogTitle>
-                            <DialogDescription>
-                              {t('feeder.mealScheduleDescription')}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <MealEditor
-                            meal={meal}
-                            onSave={(updated) => updateMeal(originalIndex, updated)}
-                            onCancel={() => setEditingIndex(null)}
-                          />
-                        </DialogContent>
-                      </Dialog>
+                      <div className="flex items-center gap-1">
+                        <Dialog
+                          open={editingIndex === originalIndex}
+                          onOpenChange={(open) => setEditingIndex(open ? originalIndex : null)}
+                        >
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                <Edit2 className="h-5 w-5" />
+                                {t('mealPlan.editMeal')}
+                              </DialogTitle>
+                              <DialogDescription>
+                                {t('feeder.mealScheduleDescription')}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <MealEditor
+                              meal={meal}
+                              onSave={(updated) => updateMeal(originalIndex, updated)}
+                              onCancel={() => setEditingIndex(null)}
+                            />
+                          </DialogContent>
+                        </Dialog>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => deleteMeal(originalIndex)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => deleteMeal(originalIndex)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

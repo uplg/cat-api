@@ -1,15 +1,17 @@
+import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
-import { Cat, Home, LogOut, Settings } from 'lucide-react'
+import { Cat, Home, LogOut, Settings, Menu, X } from 'lucide-react'
 
 export function Layout() {
   const { t } = useTranslation()
   const { user, logout } = useAuth()
   const location = useLocation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -18,10 +20,11 @@ export function Layout() {
         <div className="container flex h-14 items-center">
           <Link to="/" className="flex items-center gap-2 font-semibold">
             <Cat className="h-6 w-6 text-primary" />
-            <span>Cat Monitor</span>
+            <span className="hidden xs:inline">Cat Monitor</span>
           </Link>
 
-          <nav className="ml-6 flex items-center gap-4">
+          {/* Desktop nav */}
+          <nav className="ml-6 hidden items-center gap-4 md:flex">
             <Link to="/">
               <Button
                 variant={location.pathname === '/' ? 'secondary' : 'ghost'}
@@ -33,7 +36,8 @@ export function Layout() {
             </Link>
           </nav>
 
-          <div className="ml-auto flex items-center gap-4">
+          {/* Desktop right side */}
+          <div className="ml-auto hidden items-center gap-4 md:flex">
             <LanguageSwitcher />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Settings className="h-4 w-4" />
@@ -48,7 +52,64 @@ export function Layout() {
               {t('auth.logout')}
             </Button>
           </div>
+
+          {/* Mobile right side */}
+          <div className="ml-auto flex items-center gap-2 md:hidden">
+            <LanguageSwitcher />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="border-t bg-background md:hidden">
+            <div className="container py-4 space-y-4">
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Button
+                  variant={location.pathname === '/' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  <Home className="mr-2 h-4 w-4" />
+                  {t('layout.dashboard')}
+                </Button>
+              </Link>
+              
+              <Separator />
+              
+              <div className="flex items-center gap-2 text-sm text-muted-foreground px-3">
+                <Settings className="h-4 w-4" />
+                <span>{user?.username}</span>
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                  {user?.role}
+                </span>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  logout()
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full justify-start text-destructive hover:text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                {t('auth.logout')}
+              </Button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main content */}
