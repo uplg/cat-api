@@ -43,7 +43,7 @@ A Node.js multi-device API built with Elysia for monitoring and controlling loca
 ## 📋 Prerequisites
 
 - Bun latest (https://bun.com)
-- One or more Tuya-compatible smart cat feeders and/or automatic litter boxes
+- One or more Tuya-compatible smart cat feeders/fountains/automatic litter boxes
 - Device credentials (ID, Key, IP) for each device
 
 ## 🛠️ Installation
