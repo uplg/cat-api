@@ -142,7 +142,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   const parsedStatus = statusData?.parsed_status as {
     power?: boolean
     uv_enabled?: boolean
-    uv_runtime?: number  // en minutes, > 0 = UV actif
+    uv_runtime?: number  // en SECONDES, > 0 = UV actif
     eco_mode?: number  // 0 = off, 1 = mode 1, 2 = mode 2
     water_level?: string
     filter_life?: number  // en minutes
@@ -150,10 +150,21 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     water_time?: number
   } | undefined
 
-  // UV est considéré actif si uv_runtime > 0, sinon fallback sur uv_enabled
+  // UV is considered active if uv_runtime > 0, otherwise fallback on uv_enabled
   const isUvActive = (parsedStatus?.uv_runtime ?? 0) > 0 || (parsedStatus?.uv_enabled ?? false)
 
-  // Helper pour formater les minutes en heures/jours
+  const formatSeconds = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`
+    if (seconds < 3600) {
+      const mins = Math.floor(seconds / 60)
+      const secs = seconds % 60
+      return secs > 0 ? `${mins}min ${secs}s` : `${mins}min`
+    }
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
+  }
+
   const formatMinutes = (minutes: number): string => {
     if (minutes < 60) return `${minutes} min`
     if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}min`
@@ -243,7 +254,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {isUvActive 
-                    ? t('fountain.uvRuntime', { time: formatMinutes(parsedStatus?.uv_runtime ?? 0) })
+                    ? t('fountain.uvRuntime', { time: formatSeconds(parsedStatus?.uv_runtime ?? 0) })
                     : t('fountain.uvDescription')}
                 </p>
               </div>
