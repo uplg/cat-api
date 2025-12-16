@@ -113,7 +113,6 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
           }
         },
         {
-          query: ConnectDeviceSchema,
           response: DeviceConnectionResponseSchema,
         }
       )
@@ -137,7 +136,6 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
           }
         },
         {
-          query: DisconnectDeviceSchema,
           response: DeviceConnectionResponseSchema,
         }
       )

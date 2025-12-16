@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
@@ -100,21 +99,35 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
   })
 
   const parsedStatus = statusData?.parsed_status as {
-    clean_delay?: number
+    clean_delay?: {
+      seconds?: number
+      formatted?: string
+    }
     sleep_mode?: {
       enabled?: boolean
-      start_time?: string
-      end_time?: string
+      start_time_minutes?: number
+      start_time_formatted?: string
+      end_time_minutes?: number
+      end_time_formatted?: string
     }
-    child_lock?: boolean
-    kitten_mode?: boolean
-    lighting?: boolean
-    prompt_sound?: boolean
-    automatic_homing?: boolean
-    sand_level?: number
-    status?: string
-    error?: string
-    last_use?: string
+    sensors?: {
+      litter_level?: string
+      defecation_frequency?: number
+      defecation_duration?: number
+      fault_alarm?: number
+    }
+    system?: {
+      state?: string
+      cleaning_in_progress?: boolean
+      maintenance_required?: boolean
+    }
+    settings?: {
+      lighting?: boolean
+      child_lock?: boolean
+      prompt_sound?: boolean
+      kitten_mode?: boolean
+      automatic_homing?: boolean
+    }
   } | undefined
 
   if (isLoading) {
@@ -203,6 +216,11 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                     {Math.floor(cleanDelay[0] / 60)} min
                   </Badge>
                 </div>
+                {parsedStatus?.clean_delay?.seconds && (
+                  <p className="text-sm text-muted-foreground">
+                    Valeur actuelle: {parsedStatus.clean_delay.formatted}
+                  </p>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -229,22 +247,18 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Sand Level */}
-              {parsedStatus?.sand_level !== undefined && (
+              {parsedStatus?.sensors?.litter_level && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Niveau de litière</span>
-                    <span className="text-sm">{parsedStatus.sand_level}%</span>
+                    <Badge variant={parsedStatus.sensors.litter_level === 'full' ? 'success' : 'outline'}>
+                      {parsedStatus.sensors.litter_level === 'full' ? '✓ Rempli' : parsedStatus.sensors.litter_level === 'half' ? '½ Moyen' : parsedStatus.sensors.litter_level}
+                    </Badge>
                   </div>
-                  <Progress
-                    value={parsedStatus.sand_level}
-                    className={
-                      parsedStatus.sand_level < 20 ? '[&>div]:bg-destructive' : ''
-                    }
-                  />
-                  {parsedStatus.sand_level < 20 && (
-                    <div className="flex items-center gap-2 text-sm text-destructive">
+                  {parsedStatus.sensors.litter_level === 'half' && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <AlertTriangle className="h-4 w-4" />
-                      Niveau bas, pensez à remplir !
+                      Pensez à remplir bientôt
                     </div>
                   )}
                 </div>
@@ -257,27 +271,41 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                 <span className="text-sm font-medium">Statut</span>
                 <Badge
                   variant={
-                    parsedStatus?.status === 'cleaning'
+                    parsedStatus?.system?.state === 'cleaning'
                       ? 'default'
-                      : parsedStatus?.status === 'error'
-                      ? 'destructive'
+                      : parsedStatus?.system?.state === 'cat_inside'
+                      ? 'secondary'
                       : 'outline'
                   }
                 >
-                  {parsedStatus?.status === 'cleaning'
-                    ? 'Nettoyage en cours'
-                    : parsedStatus?.status === 'error'
-                    ? 'Erreur'
-                    : 'En veille'}
+                  {parsedStatus?.system?.state === 'cleaning'
+                    ? '🧹 Nettoyage'
+                    : parsedStatus?.system?.state === 'cat_inside'
+                    ? '🐱 Chat dedans'
+                    : parsedStatus?.system?.state === 'clumping'
+                    ? '⏱️ Agglomération'
+                    : parsedStatus?.system?.state === 'satnd_by'
+                    ? '💤 Veille'
+                    : parsedStatus?.system?.state || 'Inconnu'}
                 </Badge>
               </div>
 
-              {parsedStatus?.error && (
+              {parsedStatus?.system?.maintenance_required && (
                 <>
                   <Separator />
                   <div className="flex items-center gap-2 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm">{parsedStatus.error}</span>
+                    <span className="text-sm">Maintenance requise</span>
+                  </div>
+                </>
+              )}
+
+              {parsedStatus?.sensors?.fault_alarm !== 0 && parsedStatus?.sensors?.fault_alarm !== undefined && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-sm">Alarme défaut: {parsedStatus.sensors.fault_alarm}</span>
                   </div>
                 </>
               )}
@@ -361,6 +389,11 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                     value={sleepStart}
                     onChange={(e) => setSleepStart(e.target.value)}
                   />
+                  {parsedStatus?.sleep_mode?.start_time_formatted && (
+                    <p className="text-xs text-muted-foreground">
+                      Actuel: {parsedStatus.sleep_mode.start_time_formatted}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Fin</Label>
@@ -369,6 +402,11 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                     value={sleepEnd}
                     onChange={(e) => setSleepEnd(e.target.value)}
                   />
+                  {parsedStatus?.sleep_mode?.end_time_formatted && (
+                    <p className="text-xs text-muted-foreground">
+                      Actuel: {parsedStatus.sleep_mode.end_time_formatted}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -410,7 +448,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Label>Verrouillage enfant</Label>
                 </div>
                 <Switch
-                  checked={parsedStatus?.child_lock ?? false}
+                  checked={parsedStatus?.settings?.child_lock ?? false}
                   onCheckedChange={(checked) =>
                     settingsMutation.mutate({
                       preferences: { child_lock: checked },
@@ -429,7 +467,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Label>Mode chaton</Label>
                 </div>
                 <Switch
-                  checked={parsedStatus?.kitten_mode ?? false}
+                  checked={parsedStatus?.settings?.kitten_mode ?? false}
                   onCheckedChange={(checked) =>
                     settingsMutation.mutate({
                       preferences: { kitten_mode: checked },
@@ -448,7 +486,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Label>Éclairage</Label>
                 </div>
                 <Switch
-                  checked={parsedStatus?.lighting ?? false}
+                  checked={parsedStatus?.settings?.lighting ?? false}
                   onCheckedChange={(checked) =>
                     settingsMutation.mutate({
                       preferences: { lighting: checked },
@@ -467,7 +505,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Label>Sons</Label>
                 </div>
                 <Switch
-                  checked={parsedStatus?.prompt_sound ?? false}
+                  checked={parsedStatus?.settings?.prompt_sound ?? false}
                   onCheckedChange={(checked) =>
                     settingsMutation.mutate({
                       preferences: { prompt_sound: checked },
@@ -486,7 +524,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Label>Retour automatique</Label>
                 </div>
                 <Switch
-                  checked={parsedStatus?.automatic_homing ?? false}
+                  checked={parsedStatus?.settings?.automatic_homing ?? false}
                   onCheckedChange={(checked) =>
                     settingsMutation.mutate({
                       preferences: { automatic_homing: checked },
