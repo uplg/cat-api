@@ -61,3 +61,4 @@ dist
 devices.json
 server
 device-cache.json
+users.json

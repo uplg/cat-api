@@ -1,11 +1,36 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
-// 👤 Hard-coded users (simple auth for now)
-const USERS = [
-  { id: "1", username: "admin", password: "catadmin123", role: "admin" },
-  { id: "2", username: "user", password: "catuser123", role: "user" },
-];
+// Users loaded from users.json
+interface User {
+  id: string;
+  username: string;
+  password: string;
+  role: string;
+}
+
+function loadUsers(): User[] {
+  const usersPath = join(process.cwd(), "users.json");
+
+  if (!existsSync(usersPath)) {
+    console.warn("⚠️ users.json not found, using default admin user");
+    return [{ id: "1", username: "admin", password: "admin", role: "admin" }];
+  }
+
+  try {
+    const content = readFileSync(usersPath, "utf-8");
+    const users = JSON.parse(content) as User[];
+    console.log(`✅ Loaded ${users.length} user(s) from users.json`);
+    return users;
+  } catch (error) {
+    console.error("❌ Error loading users.json:", error);
+    return [{ id: "1", username: "admin", password: "admin", role: "admin" }];
+  }
+}
+
+const USERS = loadUsers();
 
 // JWT Secret (should be in .env in production)
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-cat-key-change-me";

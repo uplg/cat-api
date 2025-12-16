@@ -12,6 +12,7 @@ services:
     volumes:
       - ./devices.json:/app/devices.json
       - ./device-cache.json:/app/device-cache.json
+      - ./users.json:/app/users.json
     networks:
       - cat-monitor-network
     healthcheck:

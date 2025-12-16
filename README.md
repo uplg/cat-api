@@ -150,12 +150,8 @@ A full-stack application for monitoring and controlling Tuya-based smart cat dev
    # API Server port
    PORT=3000
 
-   # JWT Secret for authentication (generate a secure random string)
+   # JWT Secret for authentication (generate a secure random string using `openssl rand -hex 16`)
    JWT_SECRET=your-super-secret-jwt-key-change-me
-
-   # Optional: Admin credentials
-   ADMIN_USERNAME=admin
-   ADMIN_PASSWORD=your-secure-password
    ```
 
 6. **Start the development server**
@@ -199,6 +195,7 @@ docker-compose down
 ```
 
 The application will be available at `http://localhost` (port 80).
+If no users.json defined (rename/modify users.json.template), user: admin, password: admin will be used.
 
 ### Architecture
 
@@ -230,7 +227,8 @@ The application will be available at `http://localhost` (port 80).
 The `docker-compose.yml` mounts configuration files from the host:
 
 - `devices.json` - Device configurations
-- `meal-plans.json` - Cached meal plans
+- `device-cache.json` - Cached DPS (some devices only report changes but don't expose DPS directly, so we need to cache on data event/update)
+- `users.json` - Users "DB"
 - `.env` - Environment variables
 
 ### Build Backend Only
@@ -241,7 +239,8 @@ If you only need the API server:
 docker build -t cat-monitor-api .
 docker run -p 3000:3000 \
   -v $(pwd)/devices.json:/app/devices.json \
-  -v $(pwd)/meal-plans.json:/app/meal-plans.json \
+  -v $(pwd)/device-cache.json:/app/device-cache.json \
+  -v $(pwd)/users.json:/app/users.json \
   --env-file .env \
   cat-monitor-api
 ```
