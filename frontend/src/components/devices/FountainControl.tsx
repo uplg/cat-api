@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
@@ -167,18 +166,18 @@ export function FountainControl({ deviceId }: FountainControlProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <Skeleton className="h-6 w-[150px]" />
+            <Skeleton className="h-6 w-37.5" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-[200px] w-full" />
+            <Skeleton className="h-50 w-full" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <Skeleton className="h-6 w-[150px]" />
+            <Skeleton className="h-6 w-37.5" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-[200px] w-full" />
+            <Skeleton className="h-50 w-full" />
           </CardContent>
         </Card>
       </div>

@@ -135,18 +135,18 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <Skeleton className="h-6 w-[150px]" />
+            <Skeleton className="h-6 w-37.5" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-[300px] w-full" />
+            <Skeleton className="h-75 w-full" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <Skeleton className="h-6 w-[150px]" />
+            <Skeleton className="h-6 w-37.5" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-[300px] w-full" />
+            <Skeleton className="h-75 w-full" />
           </CardContent>
         </Card>
       </div>
@@ -212,7 +212,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                     step={60}
                     className="flex-1"
                   />
-                  <Badge variant="outline" className="min-w-[60px] justify-center">
+                  <Badge variant="outline" className="min-w-15 justify-center">
                     {Math.floor(cleanDelay[0] / 60)} min
                   </Badge>
                 </div>

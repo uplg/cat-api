@@ -11,7 +11,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="container flex h-14 items-center">
           <Link to="/" className="flex items-center gap-2 font-semibold">
             <Cat className="h-6 w-6 text-primary" />

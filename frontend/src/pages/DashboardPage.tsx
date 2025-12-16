@@ -155,8 +155,8 @@ function DeviceCardSkeleton() {
       <CardHeader className="flex flex-row items-center gap-4">
         <Skeleton className="h-16 w-16 rounded-xl" />
         <div className="flex-1 space-y-2">
-          <Skeleton className="h-6 w-[200px]" />
-          <Skeleton className="h-4 w-[150px]" />
+          <Skeleton className="h-6 w-50" />
+          <Skeleton className="h-4 w-37.5" />
         </div>
       </CardHeader>
       <CardContent>

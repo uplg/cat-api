@@ -24,9 +24,9 @@ export function DevicePage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10" />
-          <Skeleton className="h-8 w-[200px]" />
+          <Skeleton className="h-8 w-50" />
         </div>
-        <Skeleton className="h-[400px] w-full" />
+        <Skeleton className="h-100 w-full" />
       </div>
     )
   }
