@@ -11,7 +11,7 @@ const USERS = [
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-cat-key-change-me";
 
 export function createAuthRoutes() {
-  return new Elysia({ prefix: "/auth" })
+  return new Elysia({ prefix: "/auth", tags: ["auth"] })
     .use(
       jwt({
         name: "jwt",
@@ -104,67 +104,5 @@ export function createAuthRoutes() {
         success: true,
         message: "Logged out successfully",
       };
-    });
-}
-
-// Middleware to protect routes - REQUIRES authentication
-export function createAuthMiddleware() {
-  return new Elysia()
-    .use(
-      jwt({
-        name: "jwt",
-        secret: JWT_SECRET,
-      })
-    )
-    .onBeforeHandle(async ({ headers, jwt, set }) => {
-      const authHeader = headers.authorization;
-
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        set.status = 401;
-        return {
-          success: false,
-          error: "Authentication required",
-        };
-      }
-
-      const token = authHeader.substring(7);
-
-      try {
-        const payload = await jwt.verify(token);
-        if (!payload) {
-          set.status = 401;
-          return {
-            success: false,
-            error: "Invalid or expired token",
-          };
-        }
-      } catch {
-        set.status = 401;
-        return {
-          success: false,
-          error: "Invalid or expired token",
-        };
-      }
-    })
-    .derive(async ({ headers, jwt }) => {
-      const authHeader = headers.authorization;
-      const token = authHeader?.substring(7) || "";
-
-      try {
-        const payload = await jwt.verify(token);
-        if (payload) {
-          return {
-            user: {
-              id: payload.userId as string,
-              username: payload.username as string,
-              role: payload.role as string,
-            },
-          };
-        }
-      } catch {
-        // Already handled in onBeforeHandle
-      }
-
-      return { user: null };
     });
 }

@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/hooks/use-toast'
+import { MealPlanManager } from './MealPlanManager'
 import {
   Utensils,
   Loader2,
@@ -245,49 +246,11 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </div>
-            ) : mealPlanData?.decoded ? (
-              <div className="space-y-4">
-                {mealPlanData.decoded.map((meal, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-full ${
-                          meal.status === 'Enabled'
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        <Clock className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{meal.time}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {meal.portion} portion{meal.portion > 1 ? 's' : ''} •{' '}
-                          {meal.days_of_week.length === 7
-                            ? 'Tous les jours'
-                            : meal.days_of_week.join(', ')}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={meal.status === 'Enabled' ? 'success' : 'secondary'}>
-                      {meal.status === 'Enabled' ? 'Actif' : 'Inactif'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
             ) : (
-              <div className="py-8 text-center">
-                <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  Aucun repas programmé
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {mealPlanData?.message}
-                </p>
-              </div>
+              <MealPlanManager
+                deviceId={deviceId}
+                initialMealPlan={mealPlanData?.decoded || null}
+              />
             )}
           </CardContent>
         </Card>

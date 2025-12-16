@@ -17,7 +17,7 @@ import {
  */
 export function createFeederRoutes(deviceManager: DeviceManager) {
   return (
-    new Elysia({ prefix: "/devices" })
+    new Elysia({ prefix: "/devices", tags: ["feeder"] })
 
       // 🍽️ Feeder Endpoints (Multi-device)
 

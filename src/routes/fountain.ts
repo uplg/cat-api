@@ -18,7 +18,7 @@ import {
  */
 export function createFountainRoutes(deviceManager: DeviceManager) {
   return (
-    new Elysia({ prefix: "/devices" })
+    new Elysia({ prefix: "/devices", tags: ["fountain"] })
 
       // 💧 Get Fountain Status
       .get(

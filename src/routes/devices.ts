@@ -18,7 +18,7 @@ import {
  */
 export function createDeviceRoutes(deviceManager: DeviceManager) {
   return (
-    new Elysia({ prefix: "/devices" })
+    new Elysia({ prefix: "/devices", tags: ["devices"] })
 
       // 📱 Device Management Endpoints
 

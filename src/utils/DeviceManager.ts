@@ -30,13 +30,22 @@ export interface DeviceInstance {
   type: "feeder" | "litter-box" | "fountain" | "unknown";
 }
 
+interface MealPlanCache {
+  [deviceId: string]: string;
+}
+
+const MEAL_PLAN_CACHE_FILE = "meal-plans.json";
+
 export class DeviceManager {
   private devices: Map<string, DeviceInstance> = new Map();
   private configs: DeviceConfig[] = [];
   private mealPlanCache: Map<string, string> = new Map(); // deviceId -> encoded meal plan
+  private mealPlanCachePath: string;
 
   constructor() {
+    this.mealPlanCachePath = path.join(process.cwd(), MEAL_PLAN_CACHE_FILE);
     this.loadDevicesConfig();
+    this.loadMealPlanCache();
   }
 
   private loadDevicesConfig(): void {
@@ -48,6 +57,46 @@ export class DeviceManager {
     } catch (error) {
       console.error("❌ Failed to load devices configuration:", error);
       this.configs = [];
+    }
+  }
+
+  private loadMealPlanCache(): void {
+    try {
+      if (fs.existsSync(this.mealPlanCachePath)) {
+        const cacheData = fs.readFileSync(this.mealPlanCachePath, "utf8");
+        const cache: MealPlanCache = JSON.parse(cacheData);
+
+        for (const [deviceId, mealPlan] of Object.entries(cache)) {
+          this.mealPlanCache.set(deviceId, mealPlan);
+        }
+
+        console.log(
+          `📋 Loaded ${this.mealPlanCache.size} cached meal plans from disk`
+        );
+      } else {
+        console.log(`📋 No meal plan cache found, starting fresh`);
+      }
+    } catch (error) {
+      console.error("⚠️ Failed to load meal plan cache:", error);
+    }
+  }
+
+  private saveMealPlanCache(): void {
+    try {
+      const cache: MealPlanCache = {};
+
+      for (const [deviceId, mealPlan] of this.mealPlanCache.entries()) {
+        cache[deviceId] = mealPlan;
+      }
+
+      fs.writeFileSync(
+        this.mealPlanCachePath,
+        JSON.stringify(cache, null, 2),
+        "utf8"
+      );
+      console.log(`💾 Saved ${this.mealPlanCache.size} meal plans to disk`);
+    } catch (error) {
+      console.error("❌ Failed to save meal plan cache:", error);
     }
   }
 
@@ -303,11 +352,13 @@ export class DeviceManager {
 
   setMealPlan(deviceId: string, encodedMealPlan: string): void {
     this.mealPlanCache.set(deviceId, encodedMealPlan);
+    this.saveMealPlanCache(); // Persist to disk
     console.log(`📝 Cached meal plan for device ${deviceId}`);
   }
 
   clearMealPlan(deviceId: string): void {
     this.mealPlanCache.delete(deviceId);
+    this.saveMealPlanCache(); // Persist to disk
     console.log(`🗑️ Cleared meal plan cache for device ${deviceId}`);
   }
 }

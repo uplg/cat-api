@@ -2,11 +2,11 @@ import { Elysia } from "elysia";
 import { DeviceManager } from "../utils/DeviceManager";
 import { parseLitterBoxStatus } from "../utils/Litter";
 import { timeToMinutes } from "../utils/formatters";
-import { 
+import {
   LitterBoxSettingsSchema,
   LitterBoxStatusResponseSchema,
   LitterBoxCleanResponseSchema,
-  LitterBoxSettingsResponseSchema
+  LitterBoxSettingsResponseSchema,
 } from "../schemas";
 
 /**
@@ -15,96 +15,104 @@ import {
  */
 export function createLitterBoxRoutes(deviceManager: DeviceManager) {
   return (
-    new Elysia({ prefix: "/devices" })
+    new Elysia({ prefix: "/devices", tags: ["litter-box"] })
 
       // 🚽 Litter Box Endpoints
 
-      .get("/:deviceId/litter-box/status", async ({ params, set }) => {
-        const deviceId = params.deviceId;
+      .get(
+        "/:deviceId/litter-box/status",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
 
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
+
+            if (device.type !== "litter-box") {
+              set.status = 400;
+              return {
+                success: false,
+                error: "Device is not a litter box",
+              };
+            }
+
+            const status = await deviceManager.getDeviceStatus(deviceId);
+            const parsedStatus = parseLitterBoxStatus(status);
+
+            return {
+              success: true,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+              },
+              parsed_status: parsedStatus,
+              message: "Litter box status retrieved successfully",
+              raw_dps: status.dps,
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Device not found",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          if (device.type !== "litter-box") {
-            set.status = 400;
-            return {
-              success: false,
-              error: "Device is not a litter box",
-            };
-          }
-
-          const status = await deviceManager.getDeviceStatus(deviceId);
-          const parsedStatus = parseLitterBoxStatus(status);
-
-          return {
-            success: true,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-            },
-            parsed_status: parsedStatus,
-            message: "Litter box status retrieved successfully",
-            raw_dps: status.dps,
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          response: LitterBoxStatusResponseSchema,
         }
-      }, {
-        response: LitterBoxStatusResponseSchema
-      })
+      )
 
-      .post("/:deviceId/litter-box/clean", async ({ params, set }) => {
-        const deviceId = params.deviceId;
+      .post(
+        "/:deviceId/litter-box/clean",
+        async ({ params, set }) => {
+          const deviceId = params.deviceId;
 
-        try {
-          const device = deviceManager.getDevice(deviceId);
-          if (!device) {
-            set.status = 404;
+          try {
+            const device = deviceManager.getDevice(deviceId);
+            if (!device) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Device not found",
+              };
+            }
+
+            if (device.type !== "litter-box") {
+              set.status = 400;
+              return {
+                success: false,
+                error: "Device is not a litter box",
+              };
+            }
+
+            await deviceManager.sendCommand(deviceId, 107, true);
+
+            return {
+              success: true,
+              message: `Manual cleaning cycle initiated for ${device.config.name}`,
+              device: {
+                id: device.config.id,
+                name: device.config.name,
+              },
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Device not found",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          if (device.type !== "litter-box") {
-            set.status = 400;
-            return {
-              success: false,
-              error: "Device is not a litter box",
-            };
-          }
-
-          await deviceManager.sendCommand(deviceId, 107, true);
-
-          return {
-            success: true,
-            message: `Manual cleaning cycle initiated for ${device.config.name}`,
-            device: {
-              id: device.config.id,
-              name: device.config.name,
-            },
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
+        },
+        {
+          response: LitterBoxCleanResponseSchema,
         }
-      }, {
-        response: LitterBoxCleanResponseSchema
-      })
+      )
 
       .post(
         "/:deviceId/litter-box/settings",
@@ -259,7 +267,7 @@ export function createLitterBoxRoutes(deviceManager: DeviceManager) {
         },
         {
           body: LitterBoxSettingsSchema,
-          response: LitterBoxSettingsResponseSchema
+          response: LitterBoxSettingsResponseSchema,
         }
       )
   );
