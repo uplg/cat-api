@@ -14,7 +14,7 @@ export function parseFountainStatus(status: DPSObject) {
   const rawDps = status.dps || {};
 
   // DPS codes for Pixi Smart Fountain
-  const parsedStatus = {
+  const parsedStatus: Record<string, any> = {
     // DPS 1: Switch (power state)
     power: rawDps[1] !== undefined ? rawDps[1] : null,
 
@@ -62,12 +62,17 @@ export function parseFountainStatus(status: DPSObject) {
 
     // DPS 130: Fetch MAC address
     mac_address: rawDps[130] !== undefined ? rawDps[130] : null,
-
-    // Raw DPS for debugging
-    raw: rawDps,
   };
 
-  return parsedStatus;
+  // Filter out null values (except raw)
+  const filtered: Record<string, any> = {};
+  for (const [key, value] of Object.entries(parsedStatus)) {
+    if (value !== null) {
+      filtered[key] = value;
+    }
+  }
+
+  return filtered;
 }
 
 /**
