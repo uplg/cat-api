@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseFeederStatus } from "./Feeder";
 import { parseLitterBoxStatus } from "./Litter";
+import { parseFountainStatus, isCorruptedData } from "./Fountain";
 
 export interface DeviceConfig {
   name: string;
@@ -24,8 +25,9 @@ export interface DeviceInstance {
   parsedData:
     | ReturnType<typeof parseFeederStatus>
     | ReturnType<typeof parseLitterBoxStatus>
+    | ReturnType<typeof parseFountainStatus>
     | {};
-  type: "feeder" | "litter-box" | "unknown";
+  type: "feeder" | "litter-box" | "fountain" | "unknown";
 }
 
 export class DeviceManager {
@@ -51,7 +53,7 @@ export class DeviceManager {
 
   private determineDeviceType(
     config: DeviceConfig
-  ): "feeder" | "litter-box" | "unknown" {
+  ): "feeder" | "litter-box" | "fountain" | "unknown" {
     const productName = config.product_name.toLowerCase();
     const category = config.category.toLowerCase();
 
@@ -59,6 +61,8 @@ export class DeviceManager {
       return "feeder";
     } else if (productName.includes("litter") || category === "msp") {
       return "litter-box";
+    } else if (productName.includes("fountain") || category === "cwysj") {
+      return "fountain";
     }
 
     return "unknown";
@@ -103,14 +107,34 @@ export class DeviceManager {
         });
 
         api.on("data", (data) => {
+          // Check for corrupted data
+          if (data && typeof data === "object") {
+            const dataStr = JSON.stringify(data);
+            if (isCorruptedData(dataStr)) {
+              console.error(
+                `⚠️ Corrupted data detected from ${config.name}. This usually indicates:
+                - Incorrect device key in devices.json
+                - Wrong protocol version
+                - Device communication issues`
+              );
+              console.log(`Raw corrupted data:`, data);
+              return;
+            }
+          }
+
           console.log(`📡 Data from ${config.name}:`, data);
           deviceInstance.lastData = { ...deviceInstance.lastData, ...data };
+
           if (deviceInstance.type === "feeder") {
             deviceInstance.parsedData = parseFeederStatus(
               deviceInstance.lastData
             );
           } else if (deviceInstance.type === "litter-box") {
             deviceInstance.parsedData = parseLitterBoxStatus(
+              deviceInstance.lastData
+            );
+          } else if (deviceInstance.type === "fountain") {
+            deviceInstance.parsedData = parseFountainStatus(
               deviceInstance.lastData
             );
           }
@@ -152,6 +176,21 @@ export class DeviceManager {
           console.log(
             `🚽 Litter box activity from ${device.config.name}:`,
             data.dps["105"]
+          );
+        }
+        break;
+
+      case "fountain":
+        if (data.dps["1"]) {
+          console.log(
+            `💧 Fountain power state from ${device.config.name}:`,
+            data.dps["1"]
+          );
+        }
+        if (data.dps["101"]) {
+          console.log(
+            `💧 Water level from ${device.config.name}:`,
+            data.dps["101"]
           );
         }
         break;
