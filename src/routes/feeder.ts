@@ -146,8 +146,9 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
               };
             }
 
-            // Get cached meal plan
-            const cachedMealPlan = deviceManager.getMealPlan(deviceId);
+            // Get status which includes cached DPS values
+            const status = await deviceManager.getDeviceStatus(deviceId);
+            const mealPlan = status.dps["1"] as string | undefined;
 
             return {
               success: true,
@@ -155,11 +156,11 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
                 id: device.config.id,
                 name: device.config.name,
               },
-              decoded: cachedMealPlan ? MealPlan.decode(cachedMealPlan) : null,
-              meal_plan: cachedMealPlan,
-              message: cachedMealPlan
-                ? "Current meal plan retrieved from cache"
-                : "Meal plan not available. Update it first to cache it, or connect to get real-time updates.",
+              decoded: mealPlan ? MealPlan.decode(mealPlan) : null,
+              meal_plan: mealPlan ?? null,
+              message: mealPlan
+                ? "Current meal plan retrieved"
+                : "Meal plan not available yet.",
             };
           } catch (error) {
             set.status = 500;
@@ -227,10 +228,9 @@ export function createFeederRoutes(deviceManager: DeviceManager) {
 
             const encodedPlan = MealPlan.encode(requestBody.meal_plan);
 
+            // Send to device - the cache will be updated automatically
+            // when the device confirms via the data event
             await deviceManager.sendCommand(deviceId, 1, encodedPlan);
-
-            // Cache the meal plan
-            deviceManager.setMealPlan(deviceId, encodedPlan);
 
             return {
               success: true,

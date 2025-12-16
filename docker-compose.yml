@@ -11,7 +11,7 @@ services:
       - .env
     volumes:
       - ./devices.json:/app/devices.json
-      - ./meal-plans.json:/app/meal-plans.json
+      - ./device-cache.json:/app/device-cache.json
     networks:
       - cat-monitor-network
     healthcheck:

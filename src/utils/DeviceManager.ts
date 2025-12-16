@@ -33,19 +33,15 @@ export interface DeviceInstance {
   reconnectTimeout: NodeJS.Timeout | null;
 }
 
-interface MealPlanCache {
-  [deviceId: string]: string;
-}
-
-// Cache for event-only DPS values (like litter_level that only comes via push events)
-interface EventDPSCache {
+// Unified cache for device DPS values (meal plans, litter_level, etc.)
+// Stores values that come via events or need to persist across restarts
+interface DeviceDPSCache {
   [deviceId: string]: {
     [dpsId: string]: unknown;
   };
 }
 
-const MEAL_PLAN_CACHE_FILE = "meal-plans.json";
-const EVENT_DPS_CACHE_FILE = "event-dps-cache.json";
+const DEVICE_CACHE_FILE = "device-cache.json";
 
 // Connection configuration
 const CONNECTION_CONFIG = {
@@ -62,19 +58,15 @@ const CONNECTION_CONFIG = {
 export class DeviceManager {
   private devices: Map<string, DeviceInstance> = new Map();
   private configs: DeviceConfig[] = [];
-  private mealPlanCache: Map<string, string> = new Map(); // deviceId -> encoded meal plan
-  private eventDPSCache: Map<string, Record<string, unknown>> = new Map(); // deviceId -> cached event DPS
-  private mealPlanCachePath: string;
-  private eventDPSCachePath: string;
+  private deviceCache: Map<string, Record<string, unknown>> = new Map(); // deviceId -> cached DPS values
+  private deviceCachePath: string;
   private heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
   private isShuttingDown: boolean = false;
 
   constructor() {
-    this.mealPlanCachePath = path.join(process.cwd(), MEAL_PLAN_CACHE_FILE);
-    this.eventDPSCachePath = path.join(process.cwd(), EVENT_DPS_CACHE_FILE);
+    this.deviceCachePath = path.join(process.cwd(), DEVICE_CACHE_FILE);
     this.loadDevicesConfig();
-    this.loadMealPlanCache();
-    this.loadEventDPSCache();
+    this.loadDeviceCache();
   }
 
   private loadDevicesConfig(): void {
@@ -89,108 +81,75 @@ export class DeviceManager {
     }
   }
 
-  private loadMealPlanCache(): void {
+  private loadDeviceCache(): void {
     try {
-      if (fs.existsSync(this.mealPlanCachePath)) {
-        const cacheData = fs.readFileSync(this.mealPlanCachePath, "utf8");
-        const cache: MealPlanCache = JSON.parse(cacheData);
-
-        for (const [deviceId, mealPlan] of Object.entries(cache)) {
-          this.mealPlanCache.set(deviceId, mealPlan);
-        }
-
-        console.log(
-          `📋 Loaded ${this.mealPlanCache.size} cached meal plans from disk`
-        );
-      } else {
-        console.log(`📋 No meal plan cache found, starting fresh`);
-      }
-    } catch (error) {
-      console.error("⚠️ Failed to load meal plan cache:", error);
-    }
-  }
-
-  private loadEventDPSCache(): void {
-    try {
-      if (fs.existsSync(this.eventDPSCachePath)) {
-        const cacheData = fs.readFileSync(this.eventDPSCachePath, "utf8");
-        const cache: EventDPSCache = JSON.parse(cacheData);
+      if (fs.existsSync(this.deviceCachePath)) {
+        const cacheData = fs.readFileSync(this.deviceCachePath, "utf8");
+        const cache: DeviceDPSCache = JSON.parse(cacheData);
 
         for (const [deviceId, dpsValues] of Object.entries(cache)) {
-          this.eventDPSCache.set(deviceId, dpsValues);
+          this.deviceCache.set(deviceId, dpsValues);
         }
 
         console.log(
-          `📋 Loaded event DPS cache for ${this.eventDPSCache.size} devices`
+          `📋 Loaded device cache for ${this.deviceCache.size} devices`
         );
       } else {
-        console.log(`📋 No event DPS cache found, starting fresh`);
+        console.log(`📋 No device cache found, starting fresh`);
       }
     } catch (error) {
-      console.error("⚠️ Failed to load event DPS cache:", error);
+      console.error("⚠️ Failed to load device cache:", error);
     }
   }
 
-  private saveEventDPSCache(): void {
+  private saveDeviceCache(): void {
     try {
-      const cache: EventDPSCache = {};
+      const cache: DeviceDPSCache = {};
 
-      for (const [deviceId, dpsValues] of this.eventDPSCache.entries()) {
+      for (const [deviceId, dpsValues] of this.deviceCache.entries()) {
         cache[deviceId] = dpsValues;
       }
 
       fs.writeFileSync(
-        this.eventDPSCachePath,
+        this.deviceCachePath,
         JSON.stringify(cache, null, 2),
         "utf8"
       );
       console.log(
-        `💾 Saved event DPS cache for ${this.eventDPSCache.size} devices`
+        `💾 Saved device cache for ${this.deviceCache.size} devices`
       );
     } catch (error) {
-      console.error("❌ Failed to save event DPS cache:", error);
+      console.error("❌ Failed to save device cache:", error);
     }
   }
 
   /**
-   * Cache a DPS value received from an event (for report-only DPS like litter_level)
+   * Cache a DPS value (for report-only DPS like litter_level, or meal plans)
    */
-  private cacheEventDPS(deviceId: string, dpsId: string, value: unknown): void {
-    let deviceCache = this.eventDPSCache.get(deviceId);
-    if (!deviceCache) {
-      deviceCache = {};
-      this.eventDPSCache.set(deviceId, deviceCache);
+  private cacheDPS(deviceId: string, dpsId: string, value: unknown): void {
+    let cache = this.deviceCache.get(deviceId);
+    if (!cache) {
+      cache = {};
+      this.deviceCache.set(deviceId, cache);
     }
-    deviceCache[dpsId] = value;
-    // Save immediately since these are important values that may not come again
-    this.saveEventDPSCache();
-    console.log(`💾 Cached event DPS ${dpsId}=${value} for device ${deviceId}`);
+    cache[dpsId] = value;
+    // Save immediately since these are important values
+    this.saveDeviceCache();
+    console.log(`💾 Cached DPS ${dpsId} for device ${deviceId}`);
   }
 
   /**
-   * Get cached event DPS for a device
+   * Get a cached DPS value for a device
    */
-  private getEventDPSCache(deviceId: string): Record<string, unknown> {
-    return this.eventDPSCache.get(deviceId) ?? {};
+  private getCachedDPS(deviceId: string, dpsId: string): unknown {
+    return this.deviceCache.get(deviceId)?.[dpsId];
   }
 
-  private saveMealPlanCache(): void {
-    try {
-      const cache: MealPlanCache = {};
-
-      for (const [deviceId, mealPlan] of this.mealPlanCache.entries()) {
-        cache[deviceId] = mealPlan;
-      }
-
-      fs.writeFileSync(
-        this.mealPlanCachePath,
-        JSON.stringify(cache, null, 2),
-        "utf8"
-      );
-      console.log(`💾 Saved ${this.mealPlanCache.size} meal plans to disk`);
-    } catch (error) {
-      console.error("❌ Failed to save meal plan cache:", error);
-    }
+  /**
+   * Get all cached DPS for a device
+   */
+  private getDeviceCachedDPS(deviceId: string): Record<string, unknown> {
+    return this.deviceCache.get(deviceId) ?? {};
   }
 
   private determineDeviceType(
@@ -331,8 +290,8 @@ export class DeviceManager {
             `🍽️ Meal plan reported by ${device.config.name}:`,
             data.dps["1"]
           );
-          // If DPS 1 (meal plan) is updated, cache it
-          this.setMealPlan(device.config.id, data.dps["1"] as string);
+          // Cache meal plan (DPS 1) - persists across restarts
+          this.cacheDPS(device.config.id, "1", data.dps["1"]);
         }
         if (data.dps["3"]) {
           console.log(
@@ -360,7 +319,7 @@ export class DeviceManager {
           );
           // Cache this value - DPS 112 is a "report-only" datapoint that only comes via push events
           // It won't be returned by get() or refresh() calls, so we need to cache it
-          this.cacheEventDPS(device.config.id, "112", data.dps["112"]);
+          this.cacheDPS(device.config.id, "112", data.dps["112"]);
         }
         // Log all DPS received for debugging
         console.log(
@@ -847,16 +806,16 @@ export class DeviceManager {
           response.dps = mergedDps;
         }
 
-        // Merge with persisted event DPS cache (for report-only DPS like litter_level)
+        // Merge with persisted device cache (for report-only DPS like litter_level)
         // This ensures values are available even after server restart
-        const cachedEventDPS = this.getEventDPSCache(deviceId);
-        if (Object.keys(cachedEventDPS).length > 0) {
+        const cachedDPS = this.getDeviceCachedDPS(deviceId);
+        if (Object.keys(cachedDPS).length > 0) {
           // Only merge cached values that are not already in response (don't overwrite fresh data)
-          for (const [dpsId, value] of Object.entries(cachedEventDPS)) {
+          for (const [dpsId, value] of Object.entries(cachedDPS)) {
             if (response.dps[dpsId] === undefined) {
               response.dps[dpsId] = value as string | number | boolean;
               console.log(
-                `📦 Added cached event DPS ${dpsId}=${value} to response`
+                `📦 Added cached DPS ${dpsId}=${value} to response`
               );
             }
           }
@@ -931,20 +890,4 @@ export class DeviceManager {
     }
   }
 
-  // Meal Plan Cache Management
-  getMealPlan(deviceId: string): string | null {
-    return this.mealPlanCache.get(deviceId) || null;
-  }
-
-  setMealPlan(deviceId: string, encodedMealPlan: string): void {
-    this.mealPlanCache.set(deviceId, encodedMealPlan);
-    this.saveMealPlanCache(); // Persist to disk
-    console.log(`📝 Cached meal plan for device ${deviceId}`);
-  }
-
-  clearMealPlan(deviceId: string): void {
-    this.mealPlanCache.delete(deviceId);
-    this.saveMealPlanCache(); // Persist to disk
-    console.log(`🗑️ Cleared meal plan cache for device ${deviceId}`);
-  }
 }

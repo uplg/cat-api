@@ -60,5 +60,4 @@ dist
 # API config
 devices.json
 server
-meal-plans.json
-event-dps-cache.json
+device-cache.json

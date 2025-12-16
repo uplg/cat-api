@@ -15,6 +15,7 @@ WORKDIR /app
 
 # Copy only the compiled binary and config
 COPY --from=builder /app/devices.json ./devices.json
+COPY --from=builder /app/device-cache.json ./device-cache.json
 COPY --from=builder /app/server ./server
 
 CMD ["./server"]
