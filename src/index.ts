@@ -7,6 +7,7 @@ import { createDeviceRoutes } from "./routes/devices";
 import { createFeederRoutes } from "./routes/feeder";
 import { createLitterBoxRoutes } from "./routes/litter-box";
 import { createFountainRoutes } from "./routes/fountain";
+import { createAuthRoutes, createAuthMiddleware } from "./routes/auth";
 
 dotenv.config();
 
@@ -76,11 +77,18 @@ app.get("/", () => {
   };
 });
 
-// 🔗 Route Registration
-app.use(createDeviceRoutes(deviceManager));
-app.use(createFeederRoutes(deviceManager));
-app.use(createLitterBoxRoutes(deviceManager));
-app.use(createFountainRoutes(deviceManager));
+// � Auth Routes (public)
+app.use(createAuthRoutes());
+
+// 🔒 Protected Routes with Auth Middleware
+const protectedApp = new Elysia()
+  .use(createAuthMiddleware())
+  .use(createDeviceRoutes(deviceManager))
+  .use(createFeederRoutes(deviceManager))
+  .use(createLitterBoxRoutes(deviceManager))
+  .use(createFountainRoutes(deviceManager));
+
+app.use(protectedApp);
 
 // 🚀 Server Configuration
 const port = Number(process.env.PORT || 3000);

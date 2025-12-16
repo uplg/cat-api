@@ -1,0 +1,256 @@
+const API_BASE = "/api";
+
+interface ApiOptions {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
+}
+
+export async function api<T>(
+  endpoint: string,
+  options: ApiOptions = {}
+): Promise<T> {
+  const token = localStorage.getItem("token");
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: options.method || "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "API request failed");
+  }
+
+  return data;
+}
+
+// Auth API
+export interface LoginResponse {
+  success: boolean;
+  token: string;
+  user: {
+    id: string;
+    username: string;
+    role: string;
+  };
+}
+
+export interface VerifyResponse {
+  success: boolean;
+  user?: {
+    id: string;
+    username: string;
+    role: string;
+  };
+  error?: string;
+}
+
+export const authApi = {
+  login: (username: string, password: string) =>
+    api<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: { username, password },
+    }),
+
+  verify: () => api<VerifyResponse>("/auth/verify", { method: "POST" }),
+
+  logout: () => api("/auth/logout", { method: "POST" }),
+};
+
+// Device types
+export interface Device {
+  id: string;
+  name: string;
+  type: "feeder" | "litter-box" | "fountain" | "unknown";
+  product_name?: string;
+  model?: string;
+  ip?: string;
+  version?: string;
+  connected: boolean;
+  last_data?: unknown;
+  parsed_data?: unknown;
+}
+
+export interface DevicesResponse {
+  success: boolean;
+  devices: Device[];
+  total: number;
+  message: string;
+}
+
+export interface DeviceStatusResponse {
+  success: boolean;
+  device: {
+    id: string;
+    name: string;
+    type: string;
+    connected: boolean;
+  };
+  parsed_status: unknown;
+  raw_dps?: unknown;
+  message: string;
+}
+
+// Feeder types
+export interface FeederStatus {
+  food_level: string;
+  battery_level?: number;
+  last_feed_time?: string;
+  portions_today?: number;
+}
+
+export interface MealPlanEntry {
+  days_of_week: string[];
+  time: string;
+  portion: number;
+  status: "Enabled" | "Disabled";
+}
+
+export interface MealPlanResponse {
+  success: boolean;
+  device: { id: string; name: string };
+  decoded: MealPlanEntry[] | null;
+  meal_plan: string | null;
+  message: string;
+}
+
+// Fountain types
+export interface FountainStatus {
+  power: boolean;
+  uv_enabled: boolean;
+  eco_mode: boolean;
+  water_level: string;
+  filter_life: number;
+  pump_time: number;
+}
+
+// Litter box types
+export interface LitterBoxStatus {
+  clean_delay: number;
+  sleep_mode: {
+    enabled: boolean;
+    start_time: string;
+    end_time: string;
+  };
+  child_lock: boolean;
+  kitten_mode: boolean;
+  lighting: boolean;
+  sand_level: number;
+  last_use?: string;
+}
+
+// Devices API
+export const devicesApi = {
+  list: () => api<DevicesResponse>("/devices"),
+
+  connect: (deviceId: string) => api(`/devices/${deviceId}/connect`),
+
+  connectAll: () => api("/devices/connect", { method: "POST" }),
+
+  disconnect: (deviceId: string) => api(`/devices/${deviceId}/disconnect`),
+
+  disconnectAll: () => api("/devices/disconnect", { method: "POST" }),
+
+  status: (deviceId: string) =>
+    api<DeviceStatusResponse>(`/devices/${deviceId}/status`),
+};
+
+// Feeder API
+export const feederApi = {
+  status: (deviceId: string) =>
+    api<DeviceStatusResponse>(`/devices/${deviceId}/feeder/status`),
+
+  feed: (deviceId: string, portion: number = 1) =>
+    api(`/devices/${deviceId}/feeder/feed`, {
+      method: "POST",
+      body: { portion },
+    }),
+
+  getMealPlan: (deviceId: string) =>
+    api<MealPlanResponse>(`/devices/${deviceId}/feeder/meal-plan`),
+
+  setMealPlan: (deviceId: string, mealPlan: MealPlanEntry[]) =>
+    api(`/devices/${deviceId}/feeder/meal-plan`, {
+      method: "POST",
+      body: { meal_plan: mealPlan },
+    }),
+};
+
+// Fountain API
+export const fountainApi = {
+  status: (deviceId: string) =>
+    api<DeviceStatusResponse>(`/devices/${deviceId}/fountain/status`),
+
+  power: (deviceId: string, enabled: boolean) =>
+    api(`/devices/${deviceId}/fountain/power`, {
+      method: "POST",
+      body: { enabled },
+    }),
+
+  resetWater: (deviceId: string) =>
+    api(`/devices/${deviceId}/fountain/reset/water`, { method: "POST" }),
+
+  resetFilter: (deviceId: string) =>
+    api(`/devices/${deviceId}/fountain/reset/filter`, { method: "POST" }),
+
+  resetPump: (deviceId: string) =>
+    api(`/devices/${deviceId}/fountain/reset/pump`, { method: "POST" }),
+
+  setUV: (deviceId: string, enabled: boolean) =>
+    api(`/devices/${deviceId}/fountain/uv`, {
+      method: "POST",
+      body: { enabled },
+    }),
+
+  setEcoMode: (deviceId: string, enabled: boolean) =>
+    api(`/devices/${deviceId}/fountain/eco-mode`, {
+      method: "POST",
+      body: { enabled },
+    }),
+};
+
+// Litter box API
+export const litterBoxApi = {
+  status: (deviceId: string) =>
+    api<DeviceStatusResponse>(`/devices/${deviceId}/litter-box/status`),
+
+  clean: (deviceId: string) =>
+    api(`/devices/${deviceId}/litter-box/clean`, { method: "POST" }),
+
+  settings: (
+    deviceId: string,
+    settings: {
+      clean_delay?: number;
+      sleep_mode?: {
+        enabled?: boolean;
+        start_time?: string;
+        end_time?: string;
+      };
+      preferences?: {
+        child_lock?: boolean;
+        kitten_mode?: boolean;
+        lighting?: boolean;
+        prompt_sound?: boolean;
+        automatic_homing?: boolean;
+      };
+      actions?: {
+        reset_sand_level?: boolean;
+        reset_factory_settings?: boolean;
+      };
+    }
+  ) =>
+    api(`/devices/${deviceId}/litter-box/settings`, {
+      method: "POST",
+      body: settings,
+    }),
+};

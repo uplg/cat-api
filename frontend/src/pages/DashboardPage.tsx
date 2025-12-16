@@ -1,0 +1,306 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { devicesApi, type Device } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from '@/hooks/use-toast'
+import {
+  Utensils,
+  Droplets,
+  Trash2,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Power,
+  Loader2,
+} from 'lucide-react'
+
+const deviceIcons: Record<string, React.ReactNode> = {
+  feeder: <Utensils className="h-8 w-8" />,
+  fountain: <Droplets className="h-8 w-8" />,
+  'litter-box': <Trash2 className="h-8 w-8" />,
+  unknown: <Power className="h-8 w-8" />,
+}
+
+const deviceColors: Record<string, string> = {
+  feeder: 'bg-orange-100 text-orange-600',
+  fountain: 'bg-blue-100 text-blue-600',
+  'litter-box': 'bg-green-100 text-green-600',
+  unknown: 'bg-gray-100 text-gray-600',
+}
+
+function DeviceCard({ device }: { device: Device }) {
+  const queryClient = useQueryClient()
+
+  const connectMutation = useMutation({
+    mutationFn: () => devicesApi.connect(device.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast({
+        title: 'Connexion initiée',
+        description: `Connexion à ${device.name} en cours...`,
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Échec de la connexion',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const disconnectMutation = useMutation({
+    mutationFn: () => devicesApi.disconnect(device.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast({
+        title: 'Déconnecté',
+        description: `${device.name} déconnecté`,
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Échec de la déconnexion',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const isLoading = connectMutation.isPending || disconnectMutation.isPending
+
+  return (
+    <Card className="transition-shadow hover:shadow-lg">
+      <CardHeader className="flex flex-row items-center gap-4">
+        <div
+          className={`flex h-16 w-16 items-center justify-center rounded-xl ${
+            deviceColors[device.type]
+          }`}
+        >
+          {deviceIcons[device.type]}
+        </div>
+        <div className="flex-1">
+          <CardTitle className="flex items-center gap-2">
+            {device.name}
+            {device.connected ? (
+              <Badge variant="success" className="ml-2">
+                <Wifi className="mr-1 h-3 w-3" />
+                Connecté
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="ml-2">
+                <WifiOff className="mr-1 h-3 w-3" />
+                Déconnecté
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>
+            {device.product_name || device.type}
+            {device.ip && (
+              <span className="ml-2 font-mono text-xs">({device.ip})</span>
+            )}
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Link to={`/device/${device.id}`} className="flex-1">
+            <Button variant="default" className="w-full">
+              Gérer
+            </Button>
+          </Link>
+          {device.connected ? (
+            <Button
+              variant="outline"
+              onClick={() => disconnectMutation.mutate()}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <WifiOff className="h-4 w-4" />
+              )}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => connectMutation.mutate()}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wifi className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function DeviceCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center gap-4">
+        <Skeleton className="h-16 w-16 rounded-xl" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-6 w-[200px]" />
+          <Skeleton className="h-4 w-[150px]" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 flex-1" />
+          <Skeleton className="h-9 w-9" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function DashboardPage() {
+  const queryClient = useQueryClient()
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['devices'],
+    queryFn: devicesApi.list,
+    refetchInterval: 10000, // Refresh every 10 seconds
+  })
+
+  const connectAllMutation = useMutation({
+    mutationFn: devicesApi.connectAll,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast({
+        title: 'Connexion globale',
+        description: 'Connexion à tous les appareils initiée',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Échec de la connexion',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const disconnectAllMutation = useMutation({
+    mutationFn: devicesApi.disconnectAll,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast({
+        title: 'Déconnexion globale',
+        description: 'Tous les appareils ont été déconnectés',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Échec de la déconnexion',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-destructive">Erreur lors du chargement des appareils</p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['devices'] })}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Réessayer
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Gérez tous vos appareils connectés pour votre chat 🐱
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['devices'] })}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+          <Button
+            variant="default"
+            onClick={() => connectAllMutation.mutate()}
+            disabled={connectAllMutation.isPending}
+          >
+            {connectAllMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wifi className="mr-2 h-4 w-4" />
+            )}
+            Tout connecter
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => disconnectAllMutation.mutate()}
+            disabled={disconnectAllMutation.isPending}
+          >
+            {disconnectAllMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <WifiOff className="mr-2 h-4 w-4" />
+            )}
+            Tout déconnecter
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <DeviceCardSkeleton />
+          <DeviceCardSkeleton />
+          <DeviceCardSkeleton />
+        </div>
+      ) : data?.devices && data.devices.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {data.devices.map((device) => (
+            <DeviceCard key={device.id} device={device} />
+          ))}
+        </div>
+      ) : (
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">Aucun appareil trouvé</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Vérifiez que vos appareils sont configurés dans devices.json
+          </p>
+        </Card>
+      )}
+
+      {data?.devices && data.devices.length > 0 && (
+        <div className="text-center text-sm text-muted-foreground">
+          {data.total} appareil{data.total > 1 ? 's' : ''} configuré{data.total > 1 ? 's' : ''}
+        </div>
+      )}
+    </div>
+  )
+}
