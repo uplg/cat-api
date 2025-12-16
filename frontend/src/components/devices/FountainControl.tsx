@@ -77,11 +77,11 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   })
 
   const ecoModeMutation = useMutation({
-    mutationFn: (enabled: boolean) => fountainApi.setEcoMode(deviceId, enabled),
-    onSuccess: (_, enabled) => {
+    mutationFn: (mode: number) => fountainApi.setEcoMode(deviceId, mode),
+    onSuccess: (_, mode) => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
       toast({
-        title: enabled ? '🌿 Mode éco activé' : 'Mode éco désactivé',
+        title: mode === 0 ? 'Mode éco désactivé' : `🌿 Mode éco ${mode} activé`,
       })
     },
     onError: (error) => {
@@ -141,12 +141,21 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   const parsedStatus = statusData?.parsed_status as {
     power?: boolean
     uv_enabled?: boolean
-    eco_mode?: boolean
+    eco_mode?: number  // 0 = off, 1 = mode 1, 2 = mode 2
     water_level?: string
-    filter_life?: number
-    pump_time?: number
+    filter_life?: number  // en minutes
+    pump_time?: number    // en minutes
     water_time?: number
   } | undefined
+
+  // Helper pour formater les minutes en heures/jours
+  const formatMinutes = (minutes: number): string => {
+    if (minutes < 60) return `${minutes} min`
+    if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}min`
+    const days = Math.floor(minutes / 1440)
+    const hours = Math.floor((minutes % 1440) / 60)
+    return `${days}j ${hours}h`
+  }
 
   const isAnyMutating =
     powerMutation.isPending ||
@@ -235,7 +244,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
           <Separator />
 
           {/* Eco Mode */}
-          <div className="flex items-center justify-between">
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
                 <Leaf className="h-5 w-5 text-green-600" />
@@ -247,11 +256,26 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 </p>
               </div>
             </div>
-            <Switch
-              checked={parsedStatus?.eco_mode ?? false}
-              onCheckedChange={(checked) => ecoModeMutation.mutate(checked)}
-              disabled={isAnyMutating}
-            />
+            <div className="flex gap-2">
+              <Button
+                variant={parsedStatus?.eco_mode === 1 ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => ecoModeMutation.mutate(1)}
+                disabled={isAnyMutating}
+                className="flex-1"
+              >
+                Mode 1
+              </Button>
+              <Button
+                variant={parsedStatus?.eco_mode === 2 ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => ecoModeMutation.mutate(2)}
+                disabled={isAnyMutating}
+                className="flex-1"
+              >
+                Mode 2
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -304,11 +328,10 @@ export function FountainControl({ deviceId }: FountainControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Durée de vie filtre</span>
+                  <span className="text-sm font-medium">Temps filtre</span>
                 </div>
-                <span className="text-sm">{parsedStatus.filter_life}%</span>
+                <span className="text-sm font-mono">{formatMinutes(parsedStatus.filter_life)}</span>
               </div>
-              <Progress value={parsedStatus.filter_life} />
               <Button
                 variant="outline"
                 size="sm"
@@ -336,7 +359,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                   <Gauge className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Temps pompe</span>
                 </div>
-                <span className="text-sm">{parsedStatus.pump_time}h</span>
+                <span className="text-sm font-mono">{formatMinutes(parsedStatus.pump_time)}</span>
               </div>
               <Button
                 variant="outline"

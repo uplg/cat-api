@@ -107,7 +107,7 @@ export function createAuthRoutes() {
     });
 }
 
-// Middleware to protect routes
+// Middleware to protect routes - REQUIRES authentication
 export function createAuthMiddleware() {
   return new Elysia()
     .use(
@@ -116,14 +116,39 @@ export function createAuthMiddleware() {
         secret: JWT_SECRET,
       })
     )
-    .derive(async ({ headers, jwt, set }) => {
+    .onBeforeHandle(async ({ headers, jwt, set }) => {
       const authHeader = headers.authorization;
 
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return { user: null };
+        set.status = 401;
+        return {
+          success: false,
+          error: "Authentication required",
+        };
       }
 
       const token = authHeader.substring(7);
+
+      try {
+        const payload = await jwt.verify(token);
+        if (!payload) {
+          set.status = 401;
+          return {
+            success: false,
+            error: "Invalid or expired token",
+          };
+        }
+      } catch {
+        set.status = 401;
+        return {
+          success: false,
+          error: "Invalid or expired token",
+        };
+      }
+    })
+    .derive(async ({ headers, jwt }) => {
+      const authHeader = headers.authorization;
+      const token = authHeader?.substring(7) || "";
 
       try {
         const payload = await jwt.verify(token);
@@ -137,7 +162,7 @@ export function createAuthMiddleware() {
           };
         }
       } catch {
-        return { user: null };
+        // Already handled in onBeforeHandle
       }
 
       return { user: null };

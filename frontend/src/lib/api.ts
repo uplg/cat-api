@@ -212,10 +212,11 @@ export const fountainApi = {
       body: { enabled },
     }),
 
-  setEcoMode: (deviceId: string, enabled: boolean) =>
+  // Mode éco: 1 = mode 1, 2 = mode 2
+  setEcoMode: (deviceId: string, mode: number) =>
     api(`/devices/${deviceId}/fountain/eco-mode`, {
       method: "POST",
-      body: { enabled },
+      body: { mode },
     }),
 };
 
