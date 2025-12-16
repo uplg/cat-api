@@ -60,3 +60,4 @@ dist
 # API config
 devices.json
 server
+meal-plans.json
