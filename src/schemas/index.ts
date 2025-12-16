@@ -441,3 +441,107 @@ export const ScanDpsQuerySchema = t.Object({
     })
   ),
 });
+
+// 💧 Fountain Schemas
+export const FountainStatusResponseSchema = t.Object({
+  success: t.Boolean(),
+  device: t.Optional(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+    })
+  ),
+  parsed_status: t.Optional(t.Any()),
+  message: t.Optional(t.String()),
+  raw_dps: t.Optional(t.Any()),
+  error: t.Optional(t.String()),
+});
+
+export const FountainResetResponseSchema = t.Object({
+  success: t.Boolean(),
+  message: t.Optional(t.String()),
+  device: t.Optional(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+    })
+  ),
+  error: t.Optional(t.String()),
+});
+
+export const FountainUVSettingsSchema = t.Object({
+  enabled: t.Optional(
+    t.Boolean({
+      description: "Enable or disable UV light",
+      default: true,
+    })
+  ),
+  runtime: t.Optional(
+    t.Number({
+      minimum: 0,
+      maximum: 24,
+      description: "UV runtime in hours (0-24)",
+      default: 0,
+    })
+  ),
+});
+
+export const FountainUVSettingsResponseSchema = t.Object({
+  success: t.Boolean(),
+  message: t.Optional(t.String()),
+  device: t.Optional(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+    })
+  ),
+  applied_settings: t.Optional(
+    t.Object({
+      enabled: t.Optional(t.Boolean()),
+      runtime: t.Optional(t.Number()),
+    })
+  ),
+  error: t.Optional(t.String()),
+});
+
+export const FountainEcoModeSchema = t.Object({
+  mode: t.Number({
+    minimum: 1,
+    maximum: 2,
+    description: "Eco mode setting: 1 or 2",
+    default: 1,
+  }),
+});
+
+export const FountainEcoModeResponseSchema = t.Object({
+  success: t.Boolean(),
+  message: t.Optional(t.String()),
+  device: t.Optional(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+    })
+  ),
+  eco_mode: t.Optional(t.Number()),
+  error: t.Optional(t.String()),
+});
+
+export const FountainPowerSchema = t.Object({
+  enabled: t.Boolean({
+    description: "Turn light on (true) or off (false)",
+    default: true,
+  }),
+});
+
+export const FountainPowerResponseSchema = t.Object({
+  success: t.Boolean(),
+  message: t.Optional(t.String()),
+  device: t.Optional(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+    })
+  ),
+  power: t.Optional(t.Boolean()),
+  error: t.Optional(t.String()),
+});

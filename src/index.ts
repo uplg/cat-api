@@ -6,6 +6,7 @@ import { DeviceManager } from "./utils/DeviceManager";
 import { createDeviceRoutes } from "./routes/devices";
 import { createFeederRoutes } from "./routes/feeder";
 import { createLitterBoxRoutes } from "./routes/litter-box";
+import { createFountainRoutes } from "./routes/fountain";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const app = new Elysia().use(
         { name: "devices", description: "Device management operations" },
         { name: "feeder", description: "Smart feeder operations" },
         { name: "litter-box", description: "Smart litter box operations" },
+        { name: "fountain", description: "Smart fountain operations" },
       ],
     },
   })
@@ -48,7 +50,8 @@ app.get("/", () => {
   return {
     message: "🐱 Cat API",
     version: "1.0.0",
-    description: "Multi-device API for cat feeders and litter boxes",
+    description:
+      "Multi-device API for cat feeders, litter boxes, and fountains",
     endpoints: [
       "GET /",
       "GET /devices",
@@ -62,6 +65,13 @@ app.get("/", () => {
       "GET /devices/:deviceId/litter-box/status",
       "POST /devices/:deviceId/litter-box/clean",
       "POST /devices/:deviceId/litter-box/settings",
+      "GET /devices/:deviceId/fountain/status",
+      "POST /devices/:deviceId/fountain/power",
+      "POST /devices/:deviceId/fountain/reset/water",
+      "POST /devices/:deviceId/fountain/reset/filter",
+      "POST /devices/:deviceId/fountain/reset/pump",
+      "POST /devices/:deviceId/fountain/uv",
+      "POST /devices/:deviceId/fountain/eco-mode",
     ],
   };
 });
@@ -70,6 +80,7 @@ app.get("/", () => {
 app.use(createDeviceRoutes(deviceManager));
 app.use(createFeederRoutes(deviceManager));
 app.use(createLitterBoxRoutes(deviceManager));
+app.use(createFountainRoutes(deviceManager));
 
 // 🚀 Server Configuration
 const port = Number(process.env.PORT || 3000);
