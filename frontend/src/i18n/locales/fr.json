@@ -108,6 +108,8 @@
     "powerDescription": "Allumer ou éteindre la fontaine",
     "uvSterilization": "Stérilisation UV",
     "uvDescription": "Purifier l'eau avec les UV",
+    "uvActive": "Actif",
+    "uvRuntime": "{{time}} restant",
     "ecoMode": "Mode Éco",
     "ecoModeDescription": "Économiser l'énergie",
     "mode1": "Mode 1",

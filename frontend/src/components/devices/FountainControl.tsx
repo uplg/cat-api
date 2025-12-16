@@ -39,7 +39,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   const { data: statusData, isLoading } = useQuery({
     queryKey: ['fountain', deviceId, 'status'],
     queryFn: () => fountainApi.status(deviceId),
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   })
 
   // Mutations
@@ -142,12 +142,16 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   const parsedStatus = statusData?.parsed_status as {
     power?: boolean
     uv_enabled?: boolean
+    uv_runtime?: number  // en minutes, > 0 = UV actif
     eco_mode?: number  // 0 = off, 1 = mode 1, 2 = mode 2
     water_level?: string
     filter_life?: number  // en minutes
     pump_time?: number    // en minutes
     water_time?: number
   } | undefined
+
+  // UV est considéré actif si uv_runtime > 0, sinon fallback sur uv_enabled
+  const isUvActive = (parsedStatus?.uv_runtime ?? 0) > 0 || (parsedStatus?.uv_enabled ?? false)
 
   // Helper pour formater les minutes en heures/jours
   const formatMinutes = (minutes: number): string => {
@@ -225,18 +229,27 @@ export function FountainControl({ deviceId }: FountainControlProps) {
           {/* UV */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-100">
-                <Sun className="h-5 w-5 text-yellow-600" />
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isUvActive ? 'bg-yellow-200' : 'bg-yellow-100'}`}>
+                <Sun className={`h-5 w-5 ${isUvActive ? 'text-yellow-700 animate-pulse' : 'text-yellow-600'}`} />
               </div>
               <div>
-                <Label>{t('fountain.uvSterilization')}</Label>
+                <div className="flex items-center gap-2">
+                  <Label>{t('fountain.uvSterilization')}</Label>
+                  {isUvActive && (
+                    <Badge variant="success" className="text-xs">
+                      {t('fountain.uvActive')}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('fountain.uvDescription')}
+                  {isUvActive 
+                    ? t('fountain.uvRuntime', { time: formatMinutes(parsedStatus?.uv_runtime ?? 0) })
+                    : t('fountain.uvDescription')}
                 </p>
               </div>
             </div>
             <Switch
-              checked={parsedStatus?.uv_enabled ?? false}
+              checked={isUvActive}
               onCheckedChange={(checked) => uvMutation.mutate(checked)}
               disabled={isAnyMutating}
             />

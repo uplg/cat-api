@@ -108,6 +108,8 @@
     "powerDescription": "Turn the fountain on or off",
     "uvSterilization": "UV Sterilization",
     "uvDescription": "Purify water with UV",
+    "uvActive": "Active",
+    "uvRuntime": "{{time}} remaining",
     "ecoMode": "Eco Mode",
     "ecoModeDescription": "Save energy",
     "mode1": "Mode 1",
