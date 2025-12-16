@@ -7,10 +7,10 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "bun --watch src/index.ts",
-    "dev:frontend": "cd frontend && npm run dev",
+    "dev:frontend": "cd frontend && bun run dev",
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --compile --outfile server",
-    "build:frontend": "cd frontend && npm run build"
+    "build:frontend": "cd frontend && bun run build"
   },
   "keywords": [
     "tuya",

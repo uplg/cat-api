@@ -1,8 +1,20 @@
-# 🐱 Cat API
+# 🐱 Cat Monitor
 
-A Node.js multi-device API built with Elysia for monitoring and controlling locally Tuya-based smart cat feeders, fountain and automatic litter boxes. This API provides comprehensive device management, meal plan control, fountain and litter monitoring/interacton, and real-time device scanning across multiple devices simultaneously.
+A full-stack application for monitoring and controlling Tuya-based smart cat devices locally. Built with **Elysia** (backend) and **React** (frontend), it provides comprehensive device management for smart feeders, fountains, and automatic litter boxes.
+
+![Cat Monitor](https://img.shields.io/badge/Made%20with-Bun-f472b6?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square)
 
 ## 🚀 Features
+
+### 🖥️ Modern Web Interface
+
+- **Dashboard**: Real-time overview of all connected devices
+- **Device Control**: Intuitive controls for each device type
+- **Meal Planning**: Visual meal schedule management for feeders
+- **Multi-language**: Support for English and French (i18n)
+- **Responsive Design**: Works on desktop and mobile
 
 ### 📱 Multi-Device Management
 
@@ -42,11 +54,14 @@ A Node.js multi-device API built with Elysia for monitoring and controlling loca
 
 ## 📋 Prerequisites
 
-- Bun latest (https://bun.com)
-- One or more Tuya-compatible smart cat feeders/fountains/automatic litter boxes
+- [Bun](https://bun.sh) (latest version)
+- [Docker](https://docker.com) & Docker Compose (for production deployment)
+- One or more Tuya-compatible smart cat devices (feeders, fountains, litter boxes)
 - Device credentials (ID, Key, IP) for each device
 
 ## 🛠️ Installation
+
+### Development Setup
 
 1. **Getting Device Credentials**
 
@@ -63,14 +78,18 @@ A Node.js multi-device API built with Elysia for monitoring and controlling loca
 2. **Clone the repository**
 
    ```bash
-   git clone https://github.com/uplg/cat-api.git
-   cd cat-api
+   git clone https://github.com/uplg/cat-monitor.git
+   cd cat-monitor
    ```
 
 3. **Install dependencies**
 
    ```bash
+   # Install backend dependencies
    bun install
+
+   # Install frontend dependencies
+   cd frontend && bun install && cd ..
    ```
 
 4. **Device Configuration**
@@ -119,44 +138,121 @@ A Node.js multi-device API built with Elysia for monitoring and controlling loca
    - `ip`: Local IP address of the device
    - `version`: Tuya protocol version (usually 3.4 or 3.5)
 
-5. **Environment Setup (Optional)**
+5. **Environment Setup**
 
    ```bash
    cp .env.example .env
    ```
 
-   Configure your `.env` file for server settings:
+   Configure your `.env` file:
 
    ```env
    # API Server port
    PORT=3000
+
+   # JWT Secret for authentication (generate a secure random string)
+   JWT_SECRET=your-super-secret-jwt-key-change-me
+
+   # Optional: Admin credentials
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=your-secure-password
    ```
 
-6. **Start the server**
+6. **Start the development server**
 
    ```bash
-   bun start
+   # Start both backend and frontend in development mode
+   bun run dev
    ```
 
-The API will be available at `http://localhost:3000`
+   Or start them separately:
 
-### Docker (deployment)
+   ```bash
+   # Backend only (port 3000)
+   bun run dev:backend
 
-Build the Docker image:
+   # Frontend only (port 5173)
+   bun run dev:frontend
+   ```
+
+   - **Backend API**: `http://localhost:3000`
+   - **Frontend**: `http://localhost:5173`
+   - **OpenAPI Docs**: `http://localhost:3000/openapi`
+
+---
+
+## 🐳 Production Deployment (Docker)
+
+The recommended way to deploy Cat Monitor in production is using Docker Compose.
+
+### Quick Start
 
 ```bash
-docker build -t cat-api .
+# Build and start all services
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
 ```
 
-Run the container:
+The application will be available at `http://localhost` (port 80).
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Docker Network                       │
+│                                                          │
+│   ┌──────────────┐          ┌──────────────────────┐   │
+│   │   Frontend   │   /api   │       Backend        │   │
+│   │    (nginx)   │ ──────▶  │      (Elysia)        │   │
+│   │    :80       │          │       :3000          │   │
+│   └──────────────┘          └──────────────────────┘   │
+│          │                            │                 │
+└──────────┼────────────────────────────┼─────────────────┘
+           │                            │
+           ▼                            ▼
+      Web Browser               Tuya IoT Devices
+```
+
+### Services
+
+| Service    | Description                          | Port |
+| ---------- | ------------------------------------ | ---- |
+| `frontend` | React app served via nginx           | 80   |
+| `backend`  | Elysia API server (internal network) | 3000 |
+
+### Configuration
+
+The `docker-compose.yml` mounts configuration files from the host:
+
+- `devices.json` - Device configurations
+- `meal-plans.json` - Cached meal plans
+- `.env` - Environment variables
+
+### Build Backend Only
+
+If you only need the API server:
 
 ```bash
-docker run -p 3000:3000 cat-api
+docker build -t cat-monitor-api .
+docker run -p 3000:3000 \
+  -v $(pwd)/devices.json:/app/devices.json \
+  -v $(pwd)/meal-plans.json:/app/meal-plans.json \
+  --env-file .env \
+  cat-monitor-api
 ```
+
+---
+
+## 📚 API Documentation
 
 ### OpenAPI
 
-OpenAPI documentation (interactive) is available at `http://localhost:3000/openapi`
+Interactive API documentation is available at `http://localhost:3000/openapi`
 
 ## 🔍 Troubleshooting
 
@@ -194,10 +290,26 @@ The API includes comprehensive logging. Check the console output for:
 
 ## 🏗️ Architecture
 
-- **Framework**: Elysia (fast and ergonomic framework leveraging bun)
+### Tech Stack
+
+| Layer    | Technology                              |
+| -------- | --------------------------------------- |
+| Backend  | Elysia, Bun, TuyAPI                     |
+| Frontend | React 19, Vite, TailwindCSS, TypeScript |
+| UI       | Radix UI, Lucide Icons                  |
+| State    | TanStack Query (React Query)            |
+| i18n     | i18next                                 |
+| Routing  | React Router v7                         |
+| Deploy   | Docker, nginx                           |
+```
+
+### Key Features
+
+- **Framework**: Elysia (fast and ergonomic framework leveraging Bun)
 - **Device Communication**: TuyAPI for Tuya device protocol
 - **Meal Plan Encoding**: Custom Base64 binary format
 - **Real-time**: Event-driven architecture with persistent connections
+- **Authentication**: JWT-based auth with protected routes
 
 ## 📄 License
 
@@ -218,11 +330,22 @@ For issues and questions:
 - Check the troubleshooting section
 - Leave an issue (try to add as much details as possible)
 
+## 🌐 Internationalization
+
+The frontend supports multiple languages:
+
+- 🇬🇧 English (default)
+- 🇫🇷 Français
+
+Language is auto-detected from browser settings, or can be changed manually in the UI.
+
+To add a new language, create a new JSON file in `frontend/src/i18n/locales/` and register it in `frontend/src/i18n/index.ts`.
+
 ## Special Thanks
 
 - [TuyAPI](https://github.com/codetheweb/tuyapi) for the device communication library
-- [Tinytuya](https://github.com/jasonacox/tinytuya) for his wizard, helped a lot debugging version and discovering device capabilities
+- [Tinytuya](https://github.com/jasonacox/tinytuya) for the wizard, helped a lot debugging version and discovering device capabilities
 
 ---
 
-**Happy feeding! 🐱🍽️**
+**Happy monitoring! 🐱🍽️💧🚽**
