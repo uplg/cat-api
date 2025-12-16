@@ -13,6 +13,8 @@
     "refresh": "Refresh",
     "manage": "Manage",
     "all": "All",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
     "connected": "Connected",
     "disconnected": "Disconnected",
     "enabled": "Enabled",
@@ -36,7 +38,7 @@
   },
   "layout": {
     "dashboard": "Dashboard",
-    "footer": "🐱 Cat Monitor © {{year}} - Manage your smart devices"
+    "footer": "🐱 Uplg © {{year}}"
   },
   "dashboard": {
     "title": "Dashboard",

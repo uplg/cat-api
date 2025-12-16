@@ -235,45 +235,53 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             {t('dashboard.subtitle')}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => queryClient.invalidateQueries({ queryKey: ['devices'] })}
             disabled={isLoading}
+            className="flex-1 sm:flex-none"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             {t('common.refresh')}
           </Button>
           <Button
             variant="default"
+            size="sm"
             onClick={() => connectAllMutation.mutate()}
             disabled={connectAllMutation.isPending}
+            className="flex-1 sm:flex-none"
           >
             {connectAllMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Wifi className="mr-2 h-4 w-4" />
             )}
-            {t('dashboard.connectAll')}
+            <span className="hidden xs:inline">{t('dashboard.connectAll')}</span>
+            <span className="xs:hidden">{t('common.connect')}</span>
           </Button>
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => disconnectAllMutation.mutate()}
             disabled={disconnectAllMutation.isPending}
+            className="flex-1 sm:flex-none"
           >
             {disconnectAllMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <WifiOff className="mr-2 h-4 w-4" />
             )}
-            {t('dashboard.disconnectAll')}
+            <span className="hidden xs:inline">{t('dashboard.disconnectAll')}</span>
+            <span className="xs:hidden">{t('common.disconnect')}</span>
           </Button>
         </div>
       </div>
