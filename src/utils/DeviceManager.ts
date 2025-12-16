@@ -37,7 +37,15 @@ interface MealPlanCache {
   [deviceId: string]: string;
 }
 
+// Cache for event-only DPS values (like litter_level that only comes via push events)
+interface EventDPSCache {
+  [deviceId: string]: {
+    [dpsId: string]: unknown;
+  };
+}
+
 const MEAL_PLAN_CACHE_FILE = "meal-plans.json";
+const EVENT_DPS_CACHE_FILE = "event-dps-cache.json";
 
 // Connection configuration
 const CONNECTION_CONFIG = {
@@ -55,14 +63,18 @@ export class DeviceManager {
   private devices: Map<string, DeviceInstance> = new Map();
   private configs: DeviceConfig[] = [];
   private mealPlanCache: Map<string, string> = new Map(); // deviceId -> encoded meal plan
+  private eventDPSCache: Map<string, Record<string, unknown>> = new Map(); // deviceId -> cached event DPS
   private mealPlanCachePath: string;
+  private eventDPSCachePath: string;
   private heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
   private isShuttingDown: boolean = false;
 
   constructor() {
     this.mealPlanCachePath = path.join(process.cwd(), MEAL_PLAN_CACHE_FILE);
+    this.eventDPSCachePath = path.join(process.cwd(), EVENT_DPS_CACHE_FILE);
     this.loadDevicesConfig();
     this.loadMealPlanCache();
+    this.loadEventDPSCache();
   }
 
   private loadDevicesConfig(): void {
@@ -96,6 +108,70 @@ export class DeviceManager {
     } catch (error) {
       console.error("⚠️ Failed to load meal plan cache:", error);
     }
+  }
+
+  private loadEventDPSCache(): void {
+    try {
+      if (fs.existsSync(this.eventDPSCachePath)) {
+        const cacheData = fs.readFileSync(this.eventDPSCachePath, "utf8");
+        const cache: EventDPSCache = JSON.parse(cacheData);
+
+        for (const [deviceId, dpsValues] of Object.entries(cache)) {
+          this.eventDPSCache.set(deviceId, dpsValues);
+        }
+
+        console.log(
+          `📋 Loaded event DPS cache for ${this.eventDPSCache.size} devices`
+        );
+      } else {
+        console.log(`📋 No event DPS cache found, starting fresh`);
+      }
+    } catch (error) {
+      console.error("⚠️ Failed to load event DPS cache:", error);
+    }
+  }
+
+  private saveEventDPSCache(): void {
+    try {
+      const cache: EventDPSCache = {};
+
+      for (const [deviceId, dpsValues] of this.eventDPSCache.entries()) {
+        cache[deviceId] = dpsValues;
+      }
+
+      fs.writeFileSync(
+        this.eventDPSCachePath,
+        JSON.stringify(cache, null, 2),
+        "utf8"
+      );
+      console.log(
+        `💾 Saved event DPS cache for ${this.eventDPSCache.size} devices`
+      );
+    } catch (error) {
+      console.error("❌ Failed to save event DPS cache:", error);
+    }
+  }
+
+  /**
+   * Cache a DPS value received from an event (for report-only DPS like litter_level)
+   */
+  private cacheEventDPS(deviceId: string, dpsId: string, value: unknown): void {
+    let deviceCache = this.eventDPSCache.get(deviceId);
+    if (!deviceCache) {
+      deviceCache = {};
+      this.eventDPSCache.set(deviceId, deviceCache);
+    }
+    deviceCache[dpsId] = value;
+    // Save immediately since these are important values that may not come again
+    this.saveEventDPSCache();
+    console.log(`💾 Cached event DPS ${dpsId}=${value} for device ${deviceId}`);
+  }
+
+  /**
+   * Get cached event DPS for a device
+   */
+  private getEventDPSCache(deviceId: string): Record<string, unknown> {
+    return this.eventDPSCache.get(deviceId) ?? {};
   }
 
   private saveMealPlanCache(): void {
@@ -267,12 +343,30 @@ export class DeviceManager {
         break;
 
       case "litter-box":
+        console.warn(
+          `🚽 Litter box data received from ${device.config.name}:`,
+          data.dps
+        );
         if (data.dps["105"]) {
           console.log(
-            `🚽 Litter box activity from ${device.config.name}:`,
+            `🚽 Litter box defecation frequency from ${device.config.name}:`,
             data.dps["105"]
           );
         }
+        if (data.dps["112"]) {
+          console.log(
+            `🗑️ Litter level event from ${device.config.name}:`,
+            data.dps["112"]
+          );
+          // Cache this value - DPS 112 is a "report-only" datapoint that only comes via push events
+          // It won't be returned by get() or refresh() calls, so we need to cache it
+          this.cacheEventDPS(device.config.id, "112", data.dps["112"]);
+        }
+        // Log all DPS received for debugging
+        console.log(
+          `📋 Litter box DPS received:`,
+          Object.keys(data.dps).join(", ")
+        );
         break;
 
       case "fountain":
@@ -741,6 +835,32 @@ export class DeviceManager {
           `Status request timeout for ${device.config.name}`
         );
         console.log(`📥 Status received from ${device.config.name}`);
+
+        // Merge with cached lastData to include any DPS received via events
+        // This is important for DPS like 112 (litter_level) that may only come via push events
+        if (device.lastData && device.lastData.dps) {
+          const mergedDps = { ...device.lastData.dps, ...response.dps };
+          console.log(
+            `📦 Merged DPS (lastData + current):`,
+            Object.keys(mergedDps).join(", ")
+          );
+          response.dps = mergedDps;
+        }
+
+        // Merge with persisted event DPS cache (for report-only DPS like litter_level)
+        // This ensures values are available even after server restart
+        const cachedEventDPS = this.getEventDPSCache(deviceId);
+        if (Object.keys(cachedEventDPS).length > 0) {
+          // Only merge cached values that are not already in response (don't overwrite fresh data)
+          for (const [dpsId, value] of Object.entries(cachedEventDPS)) {
+            if (response.dps[dpsId] === undefined) {
+              response.dps[dpsId] = value as string | number | boolean;
+              console.log(
+                `📦 Added cached event DPS ${dpsId}=${value} to response`
+              );
+            }
+          }
+        }
 
         // Don't disconnect - maintain connection
         return response;
