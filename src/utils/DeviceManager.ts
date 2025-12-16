@@ -48,6 +48,7 @@ const CONNECTION_CONFIG = {
   COMMAND_RETRY_ATTEMPTS: 3,
   COMMAND_RETRY_DELAY_MS: 1000,
   CONNECTION_TIMEOUT_MS: 10000,
+  STATUS_REQUEST_TIMEOUT_MS: 8000,
 };
 
 export class DeviceManager {
@@ -462,6 +463,14 @@ export class DeviceManager {
       return;
     }
 
+    // If stuck in connecting state, force reset
+    if (device.isConnecting) {
+      console.log(
+        `⚠️ Device ${device.config.name} stuck in connecting state, forcing reset...`
+      );
+      this.forceDisconnect(deviceId);
+    }
+
     // Reset reconnect attempts for manual connection
     device.reconnectAttempts = 0;
 
@@ -487,6 +496,9 @@ export class DeviceManager {
           lastError.message
         );
 
+        // Force disconnect to clean up any bad state
+        this.forceDisconnect(deviceId);
+
         if (attempt < CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS) {
           await this.delay(CONNECTION_CONFIG.COMMAND_RETRY_DELAY_MS * attempt);
         }
@@ -503,6 +515,31 @@ export class DeviceManager {
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Wrap a promise with a timeout
+   */
+  private withTimeout<T>(
+    promise: Promise<T>,
+    ms: number,
+    errorMessage: string
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(errorMessage));
+      }, ms);
+
+      promise
+        .then((result) => {
+          clearTimeout(timeout);
+          resolve(result);
+        })
+        .catch((error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
   }
 
   async connectDevice(deviceId: string): Promise<boolean> {
@@ -534,6 +571,37 @@ export class DeviceManager {
     }
 
     device.api.disconnect();
+  }
+
+  /**
+   * Force disconnect a device and reset its state
+   * Used when socket is in a bad state (hang up, timeout, etc.)
+   */
+  private forceDisconnect(deviceId: string): void {
+    const device = this.devices.get(deviceId);
+    if (!device) return;
+
+    console.log(`🔌 Force disconnecting ${device.config.name}...`);
+
+    // Stop heartbeat
+    this.stopHeartbeat(deviceId);
+
+    // Cancel any pending reconnect
+    if (device.reconnectTimeout) {
+      clearTimeout(device.reconnectTimeout);
+      device.reconnectTimeout = null;
+    }
+
+    // Reset state flags
+    device.isConnected = false;
+    device.isConnecting = false;
+
+    // Force disconnect the socket
+    try {
+      device.api.disconnect();
+    } catch (e) {
+      // Ignore disconnect errors
+    }
   }
 
   async connectAllDevices(): Promise<void> {
@@ -658,17 +726,20 @@ export class DeviceManager {
 
     let lastError: Error | null = null;
 
-    for (
-      let attempt = 1;
-      attempt <= CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS;
-      attempt++
-    ) {
+    // Use fewer retries for status requests to fail faster
+    const maxAttempts = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         // Ensure connected
         await this.ensureConnected(deviceId);
 
-        // Get status
-        const response = (await device.api.get({ schema: true })) as DPSObject;
+        // Get status with timeout to prevent blocking
+        const response = await this.withTimeout(
+          device.api.get({ schema: true }) as Promise<DPSObject>,
+          CONNECTION_CONFIG.STATUS_REQUEST_TIMEOUT_MS,
+          `Status request timeout for ${device.config.name}`
+        );
         console.log(`📥 Status received from ${device.config.name}`);
 
         // Don't disconnect - maintain connection
@@ -676,21 +747,21 @@ export class DeviceManager {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         console.log(
-          `⚠️ Status request attempt ${attempt}/${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} failed for ${device.config.name}:`,
+          `⚠️ Status request attempt ${attempt}/${maxAttempts} failed for ${device.config.name}:`,
           lastError.message
         );
 
-        // On error, mark as disconnected and retry
-        device.isConnected = false;
+        // Force disconnect to clean up bad socket state
+        this.forceDisconnect(deviceId);
 
-        if (attempt < CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS) {
-          await this.delay(CONNECTION_CONFIG.COMMAND_RETRY_DELAY_MS * attempt);
+        if (attempt < maxAttempts) {
+          await this.delay(CONNECTION_CONFIG.COMMAND_RETRY_DELAY_MS);
         }
       }
     }
 
     throw new Error(
-      `Failed to get status from ${device.config.name} after ${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} attempts: ${lastError?.message}`
+      `Failed to get status from ${device.config.name} after ${maxAttempts} attempts: ${lastError?.message}`
     );
   }
 

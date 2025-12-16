@@ -14,6 +14,17 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-cat-key-change-me";
 
+// Handle uncaught errors to prevent API crashes from socket issues
+process.on("uncaughtException", (error) => {
+  console.error("⚠️ Uncaught Exception:", error.message);
+  // Don't exit - keep the server running
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("⚠️ Unhandled Rejection at:", promise, "reason:", reason);
+  // Don't exit - keep the server running
+});
+
 // 🔧 Device Manager Initialization
 const deviceManager = new DeviceManager();
 

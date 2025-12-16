@@ -56,10 +56,16 @@ export function createLitterBoxRoutes(deviceManager: DeviceManager) {
               raw_dps: status.dps,
             };
           } catch (error) {
-            set.status = 500;
+            const errorMessage =
+              error instanceof Error ? error.message : "Unknown error";
+            const isTimeout = errorMessage.toLowerCase().includes("timeout");
+
+            set.status = isTimeout ? 504 : 500;
             return {
               success: false,
-              error: error instanceof Error ? error.message : "Unknown error",
+              error: isTimeout
+                ? "Device is not responding. It may be offline or out of range."
+                : errorMessage,
             };
           }
         },
