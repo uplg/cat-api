@@ -1,10 +1,13 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Cat, Home, LogOut, Settings } from 'lucide-react'
 
 export function Layout() {
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
   const location = useLocation()
 
@@ -25,12 +28,13 @@ export function Layout() {
                 size="sm"
               >
                 <Home className="mr-2 h-4 w-4" />
-                Dashboard
+                {t('layout.dashboard')}
               </Button>
             </Link>
           </nav>
 
           <div className="ml-auto flex items-center gap-4">
+            <LanguageSwitcher />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Settings className="h-4 w-4" />
               <span>{user?.username}</span>
@@ -41,7 +45,7 @@ export function Layout() {
             <Separator orientation="vertical" className="h-6" />
             <Button variant="ghost" size="sm" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
-              Déconnexion
+              {t('auth.logout')}
             </Button>
           </div>
         </div>
@@ -55,7 +59,7 @@ export function Layout() {
       {/* Footer */}
       <footer className="border-t py-4">
         <div className="container text-center text-sm text-muted-foreground">
-          🐱 Cat Monitor &copy; {new Date().getFullYear()} - Gérez vos appareils intelligents
+          {t('layout.footer', { year: new Date().getFullYear() })}
         </div>
       </footer>
     </div>

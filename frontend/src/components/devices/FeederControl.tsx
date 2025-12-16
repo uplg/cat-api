@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { feederApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +31,7 @@ interface FeederControlProps {
 }
 
 export function FeederControl({ deviceId }: FeederControlProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [portions, setPortions] = useState([1])
 
@@ -52,14 +54,14 @@ export function FeederControl({ deviceId }: FeederControlProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeder', deviceId] })
       toast({
-        title: '🍽️ Repas distribué !',
-        description: `${portions[0]} portion${portions[0] > 1 ? 's' : ''} distribuée${portions[0] > 1 ? 's' : ''}`,
+        title: t('feeder.mealDistributed'),
+        description: t('feeder.portionsDistributed', { count: portions[0] }),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la distribution',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('feeder.distributionFailed'),
         variant: 'destructive',
       })
     },
@@ -77,11 +79,11 @@ export function FeederControl({ deviceId }: FeederControlProps) {
       <TabsList>
         <TabsTrigger value="control">
           <Utensils className="mr-2 h-4 w-4" />
-          Contrôle
+          {t('feeder.control')}
         </TabsTrigger>
         <TabsTrigger value="schedule">
           <Calendar className="mr-2 h-4 w-4" />
-          Programmation
+          {t('feeder.schedule')}
         </TabsTrigger>
       </TabsList>
 
@@ -92,16 +94,16 @@ export function FeederControl({ deviceId }: FeederControlProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Utensils className="h-5 w-5" />
-                Distribution manuelle
+                {t('feeder.manualDistribution')}
               </CardTitle>
               <CardDescription>
-                Distribuez des croquettes à votre chat
+                {t('feeder.manualDistributionDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Portions</span>
+                  <span className="text-sm font-medium">{t('feeder.portions')}</span>
                   <Badge variant="outline" className="text-lg">
                     {portions[0]}
                   </Badge>
@@ -115,8 +117,8 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                   disabled={feedMutation.isPending}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>1 portion</span>
-                  <span>10 portions</span>
+                  <span>{t('feeder.portion', { count: 1 })}</span>
+                  <span>{t('feeder.portion', { count: 10 })}</span>
                 </div>
               </div>
               <Button
@@ -128,12 +130,12 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                 {feedMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Distribution en cours...
+                    {t('feeder.distributing')}
                   </>
                 ) : (
                   <>
                     <Utensils className="mr-2 h-5 w-5" />
-                    Distribuer {portions[0]} portion{portions[0] > 1 ? 's' : ''}
+                    {t('feeder.distribute', { count: portions[0] })}
                   </>
                 )}
               </Button>
@@ -143,8 +145,8 @@ export function FeederControl({ deviceId }: FeederControlProps) {
           {/* Status Card */}
           <Card>
             <CardHeader>
-              <CardTitle>État du distributeur</CardTitle>
-              <CardDescription>Informations en temps réel</CardDescription>
+              <CardTitle>{t('feeder.feederStatus')}</CardTitle>
+              <CardDescription>{t('feeder.realtimeInfo')}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingStatus ? (
@@ -158,7 +160,7 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Utensils className="h-4 w-4 text-muted-foreground" />
-                      <span>Niveau de nourriture</span>
+                      <span>{t('feeder.foodLevel')}</span>
                     </div>
                     <Badge
                       variant={
@@ -170,10 +172,10 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                       }
                     >
                       {parsedStatus.food_level === 'low'
-                        ? 'Bas'
+                        ? t('feeder.foodLevelLow')
                         : parsedStatus.food_level === 'medium'
-                        ? 'Moyen'
-                        : 'Plein'}
+                        ? t('feeder.foodLevelMedium')
+                        : t('feeder.foodLevelFull')}
                     </Badge>
                   </div>
                   <Separator />
@@ -182,7 +184,7 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Battery className="h-4 w-4 text-muted-foreground" />
-                          <span>Batterie</span>
+                          <span>{t('feeder.battery')}</span>
                         </div>
                         <Badge
                           variant={
@@ -202,10 +204,10 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>Statut</span>
+                      <span>{t('common.status')}</span>
                     </div>
                     <Badge variant={parsedStatus.is_feeding ? 'default' : 'outline'}>
-                      {parsedStatus.is_feeding ? 'En distribution' : 'En attente'}
+                      {parsedStatus.is_feeding ? t('feeder.feeding') : t('feeder.waiting')}
                     </Badge>
                   </div>
                   {parsedStatus.error && (
@@ -220,7 +222,7 @@ export function FeederControl({ deviceId }: FeederControlProps) {
                 </div>
               ) : (
                 <p className="text-muted-foreground">
-                  Impossible de récupérer le statut
+                  {t('feeder.statusFetchError')}
                 </p>
               )}
             </CardContent>
@@ -233,10 +235,10 @@ export function FeederControl({ deviceId }: FeederControlProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Programmation des repas
+              {t('feeder.mealSchedule')}
             </CardTitle>
             <CardDescription>
-              Gérez les horaires de distribution automatique
+              {t('feeder.mealScheduleDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>

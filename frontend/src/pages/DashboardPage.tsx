@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { devicesApi, type Device } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -38,6 +39,7 @@ const deviceColors: Record<string, string> = {
 }
 
 function DeviceCard({ device }: { device: Device }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const connectMutation = useMutation({
@@ -45,14 +47,14 @@ function DeviceCard({ device }: { device: Device }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       toast({
-        title: 'Connexion initiée',
-        description: `Connexion à ${device.name} en cours...`,
+        title: t('device.connectionInitiated'),
+        description: t('device.connectionInitiatedDescription', { name: device.name }),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la connexion',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('device.connectionFailed'),
         variant: 'destructive',
       })
     },
@@ -63,14 +65,14 @@ function DeviceCard({ device }: { device: Device }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       toast({
-        title: 'Déconnecté',
-        description: `${device.name} déconnecté`,
+        title: t('device.disconnected'),
+        description: t('device.disconnectedDescription', { name: device.name }),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la déconnexion',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('device.disconnectionFailed'),
         variant: 'destructive',
       })
     },
@@ -94,12 +96,12 @@ function DeviceCard({ device }: { device: Device }) {
             {device.connected ? (
               <Badge variant="success" className="ml-2">
                 <Wifi className="mr-1 h-3 w-3" />
-                Connecté
+                {t('common.connected')}
               </Badge>
             ) : (
               <Badge variant="secondary" className="ml-2">
                 <WifiOff className="mr-1 h-3 w-3" />
-                Déconnecté
+                {t('common.disconnected')}
               </Badge>
             )}
           </CardTitle>
@@ -115,7 +117,7 @@ function DeviceCard({ device }: { device: Device }) {
         <div className="flex gap-2">
           <Link to={`/device/${device.id}`} className="flex-1">
             <Button variant="default" className="w-full">
-              Gérer
+              {t('common.manage')}
             </Button>
           </Link>
           {device.connected ? (
@@ -170,6 +172,7 @@ function DeviceCardSkeleton() {
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const { data, isLoading, error } = useQuery({
@@ -183,14 +186,14 @@ export function DashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       toast({
-        title: 'Connexion globale',
-        description: 'Connexion à tous les appareils initiée',
+        title: t('dashboard.globalConnection'),
+        description: t('dashboard.globalConnectionDescription'),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la connexion',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('device.connectionFailed'),
         variant: 'destructive',
       })
     },
@@ -201,14 +204,14 @@ export function DashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       toast({
-        title: 'Déconnexion globale',
-        description: 'Tous les appareils ont été déconnectés',
+        title: t('dashboard.globalDisconnection'),
+        description: t('dashboard.globalDisconnectionDescription'),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la déconnexion',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('device.disconnectionFailed'),
         variant: 'destructive',
       })
     },
@@ -217,14 +220,14 @@ export function DashboardPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-destructive">Erreur lors du chargement des appareils</p>
+        <p className="text-destructive">{t('dashboard.loadingError')}</p>
         <Button
           variant="outline"
           className="mt-4"
           onClick={() => queryClient.invalidateQueries({ queryKey: ['devices'] })}
         >
           <RefreshCw className="mr-2 h-4 w-4" />
-          Réessayer
+          {t('common.retry')}
         </Button>
       </div>
     )
@@ -234,9 +237,9 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground">
-            Gérez tous vos appareils connectés pour votre chat 🐱
+            {t('dashboard.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -246,7 +249,7 @@ export function DashboardPage() {
             disabled={isLoading}
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualiser
+            {t('common.refresh')}
           </Button>
           <Button
             variant="default"
@@ -258,7 +261,7 @@ export function DashboardPage() {
             ) : (
               <Wifi className="mr-2 h-4 w-4" />
             )}
-            Tout connecter
+            {t('dashboard.connectAll')}
           </Button>
           <Button
             variant="secondary"
@@ -270,7 +273,7 @@ export function DashboardPage() {
             ) : (
               <WifiOff className="mr-2 h-4 w-4" />
             )}
-            Tout déconnecter
+            {t('dashboard.disconnectAll')}
           </Button>
         </div>
       </div>
@@ -289,16 +292,16 @@ export function DashboardPage() {
         </div>
       ) : (
         <Card className="p-12 text-center">
-          <p className="text-muted-foreground">Aucun appareil trouvé</p>
+          <p className="text-muted-foreground">{t('dashboard.noDevices')}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Vérifiez que vos appareils sont configurés dans devices.json
+            {t('dashboard.noDevicesHint')}
           </p>
         </Card>
       )}
 
       {data?.devices && data.devices.length > 0 && (
         <div className="text-center text-sm text-muted-foreground">
-          {data.total} appareil{data.total > 1 ? 's' : ''} configuré{data.total > 1 ? 's' : ''}
+          {t('dashboard.deviceCount', { count: data.total })}
         </div>
       )}
     </div>

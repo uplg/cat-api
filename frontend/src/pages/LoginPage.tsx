@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,9 +13,11 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Cat, Loader2 } from 'lucide-react'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const { isAuthenticated, login } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -31,13 +34,13 @@ export function LoginPage() {
     try {
       await login(username, password)
       toast({
-        title: 'Bienvenue ! 🐱',
-        description: 'Connexion réussie',
+        title: t('auth.loginSuccess'),
+        description: t('auth.loginSuccessDescription'),
       })
     } catch (error) {
       toast({
-        title: 'Erreur de connexion',
-        description: error instanceof Error ? error.message : 'Identifiants incorrects',
+        title: t('auth.loginError'),
+        description: error instanceof Error ? error.message : t('auth.invalidCredentials'),
         variant: 'destructive',
       })
     } finally {
@@ -47,6 +50,9 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-blue-50 to-purple-50 p-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -54,13 +60,13 @@ export function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Cat Monitor</CardTitle>
           <CardDescription>
-            Connectez-vous pour gérer vos appareils
+            {t('auth.loginDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Nom d'utilisateur</Label>
+              <Label htmlFor="username">{t('auth.username')}</Label>
               <Input
                 id="username"
                 type="text"
@@ -72,7 +78,7 @@ export function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -87,15 +93,15 @@ export function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connexion...
+                  {t('auth.loggingIn')}
                 </>
               ) : (
-                'Se connecter'
+                t('auth.login')
               )}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>Utilisateurs de test :</p>
+            <p>{t('auth.testUsers')}</p>
             <p className="font-mono text-xs">admin / catadmin123</p>
             <p className="font-mono text-xs">user / catuser123</p>
           </div>

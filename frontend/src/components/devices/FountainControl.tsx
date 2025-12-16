@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { fountainApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +32,7 @@ interface FountainControlProps {
 }
 
 export function FountainControl({ deviceId }: FountainControlProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   // Fetch fountain status
@@ -46,13 +48,13 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     onSuccess: (_, enabled) => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
       toast({
-        title: enabled ? '💧 Fontaine allumée' : '⏸️ Fontaine éteinte',
+        title: enabled ? t('fountain.fountainOn') : t('fountain.fountainOff'),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       })
     },
@@ -63,13 +65,13 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     onSuccess: (_, enabled) => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
       toast({
-        title: enabled ? '☀️ UV activés' : '🌙 UV désactivés',
+        title: enabled ? t('fountain.uvOn') : t('fountain.uvOff'),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       })
     },
@@ -80,13 +82,13 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     onSuccess: (_, mode) => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
       toast({
-        title: mode === 0 ? 'Mode éco désactivé' : `🌿 Mode éco ${mode} activé`,
+        title: mode === 0 ? t('fountain.ecoModeOff') : t('fountain.ecoModeOn', { mode }),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       })
     },
@@ -96,12 +98,12 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     mutationFn: () => fountainApi.resetWater(deviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
-      toast({ title: '💧 Compteur d\'eau réinitialisé' })
+      toast({ title: t('fountain.waterCounterReset') })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       })
     },
@@ -111,12 +113,12 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     mutationFn: () => fountainApi.resetFilter(deviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
-      toast({ title: '🔄 Compteur filtre réinitialisé' })
+      toast({ title: t('fountain.filterCounterReset') })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       })
     },
@@ -126,12 +128,12 @@ export function FountainControl({ deviceId }: FountainControlProps) {
     mutationFn: () => fountainApi.resetPump(deviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fountain', deviceId] })
-      toast({ title: '⚙️ Compteur pompe réinitialisé' })
+      toast({ title: t('fountain.pumpCounterReset') })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.error'),
         variant: 'destructive',
       })
     },
@@ -191,10 +193,10 @@ export function FountainControl({ deviceId }: FountainControlProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Droplets className="h-5 w-5" />
-            Contrôles
+            {t('fountain.controls')}
           </CardTitle>
           <CardDescription>
-            Gérez le fonctionnement de la fontaine
+            {t('fountain.controlsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -205,9 +207,9 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 <Power className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <Label>Alimentation</Label>
+                <Label>{t('fountain.power')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Allumer ou éteindre la fontaine
+                  {t('fountain.powerDescription')}
                 </p>
               </div>
             </div>
@@ -227,9 +229,9 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 <Sun className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
-                <Label>Stérilisation UV</Label>
+                <Label>{t('fountain.uvSterilization')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Purifier l'eau avec les UV
+                  {t('fountain.uvDescription')}
                 </p>
               </div>
             </div>
@@ -249,9 +251,9 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 <Leaf className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <Label>Mode Éco</Label>
+                <Label>{t('fountain.ecoMode')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Économiser l'énergie
+                  {t('fountain.ecoModeDescription')}
                 </p>
               </div>
             </div>
@@ -263,7 +265,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 disabled={isAnyMutating}
                 className="flex-1"
               >
-                Mode 1
+                {t('fountain.mode1')}
               </Button>
               <Button
                 variant={parsedStatus?.eco_mode === 2 ? 'default' : 'outline'}
@@ -272,7 +274,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 disabled={isAnyMutating}
                 className="flex-1"
               >
-                Mode 2
+                {t('fountain.mode2')}
               </Button>
             </div>
           </div>
@@ -282,9 +284,9 @@ export function FountainControl({ deviceId }: FountainControlProps) {
       {/* Status & Maintenance */}
       <Card>
         <CardHeader>
-          <CardTitle>État & Maintenance</CardTitle>
+          <CardTitle>{t('fountain.statusMaintenance')}</CardTitle>
           <CardDescription>
-            Surveillez et entretenez votre fontaine
+            {t('fountain.statusMaintenanceDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -293,7 +295,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Droplets className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Niveau d'eau</span>
+                <span className="text-sm font-medium">{t('fountain.waterLevel')}</span>
               </div>
               <Badge
                 variant={
@@ -305,16 +307,16 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 }
               >
                 {parsedStatus?.water_level === 'low'
-                  ? 'Bas'
+                  ? t('fountain.waterLevelLow')
                   : parsedStatus?.water_level === 'medium'
-                  ? 'Moyen'
-                  : 'OK'}
+                  ? t('fountain.waterLevelMedium')
+                  : t('fountain.waterLevelOk')}
               </Badge>
             </div>
             {parsedStatus?.water_level === 'low' && (
               <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4" />
-                Ajoutez de l'eau !
+                {t('fountain.addWater')}
               </div>
             )}
           </div>
@@ -327,7 +329,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Temps filtre</span>
+                  <span className="text-sm font-medium">{t('fountain.filterTime')}</span>
                 </div>
                 <span className="text-sm font-mono">{formatMinutes(parsedStatus.filter_life)}</span>
               </div>
@@ -343,7 +345,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 ) : (
                   <RefreshCw className="mr-2 h-4 w-4" />
                 )}
-                Réinitialiser (filtre changé)
+                {t('fountain.resetFilterChanged')}
               </Button>
             </div>
           )}
@@ -356,7 +358,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Gauge className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Temps pompe</span>
+                  <span className="text-sm font-medium">{t('fountain.pumpTime')}</span>
                 </div>
                 <span className="text-sm font-mono">{formatMinutes(parsedStatus.pump_time)}</span>
               </div>
@@ -372,7 +374,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
                 ) : (
                   <RefreshCw className="mr-2 h-4 w-4" />
                 )}
-                Réinitialiser (pompe nettoyée)
+                {t('fountain.resetPumpCleaned')}
               </Button>
             </div>
           )}
@@ -382,7 +384,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Droplets className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Eau fraîche</span>
+              <span className="text-sm font-medium">{t('fountain.freshWater')}</span>
             </div>
             <Button
               variant="outline"
@@ -396,7 +398,7 @@ export function FountainControl({ deviceId }: FountainControlProps) {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              J'ai changé l'eau
+              {t('fountain.waterChanged')}
             </Button>
           </div>
         </CardContent>

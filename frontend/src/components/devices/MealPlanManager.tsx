@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { feederApi, type MealPlanEntry } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,13 +33,13 @@ import {
 } from 'lucide-react'
 
 const DAYS_OF_WEEK = [
-  { short: 'L', full: 'Monday', label: 'Lun' },
-  { short: 'M', full: 'Tuesday', label: 'Mar' },
-  { short: 'M', full: 'Wednesday', label: 'Mer' },
-  { short: 'J', full: 'Thursday', label: 'Jeu' },
-  { short: 'V', full: 'Friday', label: 'Ven' },
-  { short: 'S', full: 'Saturday', label: 'Sam' },
-  { short: 'D', full: 'Sunday', label: 'Dim' },
+  { short: 'L', full: 'Monday', key: 'monday' },
+  { short: 'M', full: 'Tuesday', key: 'tuesday' },
+  { short: 'M', full: 'Wednesday', key: 'wednesday' },
+  { short: 'J', full: 'Thursday', key: 'thursday' },
+  { short: 'V', full: 'Friday', key: 'friday' },
+  { short: 'S', full: 'Saturday', key: 'saturday' },
+  { short: 'D', full: 'Sunday', key: 'sunday' },
 ]
 
 interface MealPlanManagerProps {
@@ -53,6 +54,8 @@ function DaySelector({
   selectedDays: string[]
   onChange: (days: string[]) => void
 }) {
+  const { t } = useTranslation()
+
   const toggleDay = (day: string) => {
     if (selectedDays.includes(day)) {
       onChange(selectedDays.filter((d) => d !== day))
@@ -87,19 +90,19 @@ function DaySelector({
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
           >
-            {day.label}
+            {t(`mealPlan.days_${day.key}`)}
           </button>
         ))}
       </div>
       <div className="flex gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
-          Tous
+          {t('common.all')}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={selectWeekdays}>
-          Semaine
+          {t('mealPlan.weekdaysOnly')}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={selectWeekend}>
-          Week-end
+          {t('mealPlan.weekend')}
         </Button>
       </div>
     </div>
@@ -113,6 +116,7 @@ interface MealEditorProps {
 }
 
 function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
+  const { t } = useTranslation()
   const [time, setTime] = useState(meal?.time || '08:00')
   const [portion, setPortion] = useState([meal?.portion || 1])
   const [days, setDays] = useState<string[]>(
@@ -124,8 +128,8 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
     e.preventDefault()
     if (days.length === 0) {
       toast({
-        title: 'Erreur',
-        description: 'Sélectionnez au moins un jour',
+        title: t('common.error'),
+        description: t('mealPlan.selectAtLeastOneDay'),
         variant: 'destructive',
       })
       return
@@ -144,7 +148,7 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
-          Horaire
+          {t('mealPlan.time')}
         </Label>
         <Input
           type="time"
@@ -158,7 +162,7 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
       <div className="space-y-3">
         <Label className="flex items-center gap-2">
           <Utensils className="h-4 w-4" />
-          Portions
+          {t('mealPlan.portions')}
         </Label>
         <div className="flex items-center gap-4">
           <Slider
@@ -174,7 +178,7 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          1 à 12 portions par repas
+          {t('mealPlan.portionsPerMeal')}
         </p>
       </div>
 
@@ -182,7 +186,7 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <Calendar className="h-4 w-4" />
-          Jours
+          {t('mealPlan.days')}
         </Label>
         <DaySelector selectedDays={days} onChange={setDays} />
       </div>
@@ -190,9 +194,9 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
       {/* Enabled */}
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="space-y-0.5">
-          <Label>Activer ce repas</Label>
+          <Label>{t('mealPlan.enableMeal')}</Label>
           <p className="text-sm text-muted-foreground">
-            Désactiver temporairement sans supprimer
+            {t('mealPlan.disableTemporarily')}
           </p>
         </div>
         <Switch checked={enabled} onCheckedChange={setEnabled} />
@@ -201,11 +205,11 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
       {/* Actions */}
       <div className="flex gap-3">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-          Annuler
+          {t('common.cancel')}
         </Button>
         <Button type="submit" className="flex-1">
           <Save className="mr-2 h-4 w-4" />
-          Enregistrer
+          {t('common.save')}
         </Button>
       </div>
     </form>
@@ -213,6 +217,7 @@ function MealEditor({ meal, onSave, onCancel }: MealEditorProps) {
 }
 
 export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [mealPlan, setMealPlan] = useState<MealPlanEntry[]>(initialMealPlan || [])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -234,14 +239,14 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
       queryClient.invalidateQueries({ queryKey: ['feeder', deviceId, 'meal-plan'] })
       setHasChanges(false)
       toast({
-        title: '✅ Plan de repas sauvegardé',
-        description: `${mealPlan.length} repas programmé${mealPlan.length > 1 ? 's' : ''}`,
+        title: t('mealPlan.mealPlanSaved'),
+        description: t('mealPlan.mealsScheduled', { count: mealPlan.length }),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la sauvegarde',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('mealPlan.saveFailed'),
         variant: 'destructive',
       })
     },
@@ -285,15 +290,18 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
   }
 
   const formatDays = (days: string[]) => {
-    if (days.length === 7) return 'Tous les jours'
+    if (days.length === 7) return t('mealPlan.everyday')
     if (days.length === 5 && !days.includes('Saturday') && !days.includes('Sunday')) {
-      return 'Semaine'
+      return t('mealPlan.weekdays')
     }
     if (days.length === 2 && days.includes('Saturday') && days.includes('Sunday')) {
-      return 'Week-end'
+      return t('mealPlan.weekend')
     }
     return days
-      .map((d) => DAYS_OF_WEEK.find((day) => day.full === d)?.label)
+      .map((d) => {
+        const day = DAYS_OF_WEEK.find((day) => day.full === d)
+        return day ? t(`mealPlan.days_${day.key}`) : d
+      })
       .join(', ')
   }
 
@@ -305,9 +313,9 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
       {/* Header with save button */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold">Plan de repas</h3>
+          <h3 className="text-lg font-semibold">{t('feeder.mealSchedule')}</h3>
           <p className="text-sm text-muted-foreground">
-            {mealPlan.length}/10 repas programmés
+            {mealPlan.length}/10 {t('mealPlan.mealsScheduled', { count: mealPlan.length }).split(' ').slice(1).join(' ')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -315,17 +323,17 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
             <DialogTrigger asChild>
               <Button variant="outline" disabled={mealPlan.length >= 10}>
                 <Plus className="mr-2 h-4 w-4" />
-                Ajouter
+                {t('common.add')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
-                  Nouveau repas
+                  {t('mealPlan.addMeal')}
                 </DialogTitle>
                 <DialogDescription>
-                  Programmez un nouveau repas automatique
+                  {t('feeder.mealScheduleDescription')}
                 </DialogDescription>
               </DialogHeader>
               <MealEditor
@@ -344,14 +352,14 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Sauvegarder
+            {t('mealPlan.saveChanges')}
           </Button>
         </div>
       </div>
 
       {hasChanges && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          ⚠️ Modifications non sauvegardées. Cliquez sur "Sauvegarder" pour appliquer les changements.
+          ⚠️ {t('mealPlan.unsavedChanges')}
         </div>
       )}
 
@@ -361,10 +369,10 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              Aucun repas programmé
+              {t('mealPlan.noMeals')}
             </p>
             <p className="text-sm text-muted-foreground text-center mt-1">
-              Cliquez sur "Ajouter" pour créer votre premier repas
+              {t('mealPlan.noMealsDescription')}
             </p>
           </CardContent>
         </Card>
@@ -399,12 +407,12 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline">
                           <Utensils className="mr-1 h-3 w-3" />
-                          {meal.portion} portion{meal.portion > 1 ? 's' : ''}
+                          {t('feeder.portion', { count: meal.portion })}
                         </Badge>
                         <Badge
                           variant={meal.status === 'Enabled' ? 'success' : 'secondary'}
                         >
-                          {meal.status === 'Enabled' ? 'Actif' : 'Inactif'}
+                          {meal.status === 'Enabled' ? t('common.enabled') : t('common.disabled')}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground truncate">
@@ -432,10 +440,10 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
                           <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
                               <Edit2 className="h-5 w-5" />
-                              Modifier le repas
+                              {t('mealPlan.editMeal')}
                             </DialogTitle>
                             <DialogDescription>
-                              Modifiez les paramètres de ce repas
+                              {t('feeder.mealScheduleDescription')}
                             </DialogDescription>
                           </DialogHeader>
                           <MealEditor

@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { devicesApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,6 +11,7 @@ import { FountainControl } from '@/components/devices/FountainControl'
 import { LitterBoxControl } from '@/components/devices/LitterBoxControl'
 
 export function DevicePage() {
+  const { t } = useTranslation()
   const { deviceId } = useParams<{ deviceId: string }>()
 
   const { data: devicesData, isLoading: isLoadingDevices } = useQuery({
@@ -34,14 +36,14 @@ export function DevicePage() {
   if (!device) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-lg font-medium">Appareil non trouvé</p>
+        <p className="text-lg font-medium">{t('device.notFound')}</p>
         <p className="mt-2 text-muted-foreground">
-          L'appareil demandé n'existe pas ou n'est plus disponible.
+          {t('device.notFoundDescription')}
         </p>
         <Link to="/">
           <Button className="mt-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour au dashboard
+            {t('device.backToDashboard')}
           </Button>
         </Link>
       </div>
@@ -63,12 +65,12 @@ export function DevicePage() {
             {device.connected ? (
               <Badge variant="success">
                 <Wifi className="mr-1 h-3 w-3" />
-                Connecté
+                {t('common.connected')}
               </Badge>
             ) : (
               <Badge variant="secondary">
                 <WifiOff className="mr-1 h-3 w-3" />
-                Déconnecté
+                {t('common.disconnected')}
               </Badge>
             )}
           </h1>
@@ -85,7 +87,7 @@ export function DevicePage() {
       {device.type === 'unknown' && (
         <div className="rounded-lg border p-8 text-center">
           <p className="text-muted-foreground">
-            Type d'appareil non reconnu. Impossible d'afficher les contrôles.
+            {t('device.unknownType')}
           </p>
         </div>
       )}

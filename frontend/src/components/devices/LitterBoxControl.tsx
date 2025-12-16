@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { litterBoxApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,6 +48,7 @@ interface LitterBoxControlProps {
 }
 
 export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [cleanDelay, setCleanDelay] = useState([120])
   const [sleepStart, setSleepStart] = useState('23:00')
@@ -66,14 +68,14 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['litter-box', deviceId] })
       toast({
-        title: '🧹 Nettoyage lancé !',
-        description: 'Le cycle de nettoyage a démarré',
+        title: t('litterBox.cleaningStarted'),
+        description: t('litterBox.cleaningCycleStarted'),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec du nettoyage',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('litterBox.cleaningFailed'),
         variant: 'destructive',
       })
     },
@@ -86,13 +88,13 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['litter-box', deviceId] })
       toast({
-        title: '✅ Paramètres mis à jour',
+        title: t('litterBox.settingsUpdated'),
       })
     },
     onError: (error) => {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Échec de la mise à jour',
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('litterBox.settingsUpdateFailed'),
         variant: 'destructive',
       })
     },
@@ -158,11 +160,11 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
       <TabsList>
         <TabsTrigger value="control">
           <Play className="mr-2 h-4 w-4" />
-          Contrôle
+          {t('litterBox.control')}
         </TabsTrigger>
         <TabsTrigger value="settings">
           <Settings className="mr-2 h-4 w-4" />
-          Paramètres
+          {t('litterBox.settings')}
         </TabsTrigger>
       </TabsList>
 
@@ -173,10 +175,10 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trash2 className="h-5 w-5" />
-                Actions rapides
+                {t('litterBox.quickActions')}
               </CardTitle>
               <CardDescription>
-                Contrôlez votre litière intelligente
+                {t('litterBox.quickActionsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -189,12 +191,12 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                 {cleanMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Nettoyage en cours...
+                    {t('litterBox.cleaning')}
                   </>
                 ) : (
                   <>
                     <Trash2 className="mr-2 h-5 w-5" />
-                    Lancer le nettoyage
+                    {t('litterBox.startCleaning')}
                   </>
                 )}
               </Button>
@@ -202,7 +204,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
               <Separator />
 
               <div className="space-y-3">
-                <Label>Délai avant nettoyage automatique</Label>
+                <Label>{t('litterBox.cleanDelayBefore')}</Label>
                 <div className="flex items-center gap-4">
                   <Slider
                     value={cleanDelay}
@@ -218,7 +220,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                 </div>
                 {parsedStatus?.clean_delay?.seconds && (
                   <p className="text-sm text-muted-foreground">
-                    Valeur actuelle: {parsedStatus.clean_delay.formatted}
+                    {t('litterBox.currentValue', { value: parsedStatus.clean_delay.formatted })}
                   </p>
                 )}
                 <Button
@@ -233,7 +235,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   {settingsMutation.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                  Appliquer le délai
+                  {t('litterBox.applyDelay')}
                 </Button>
               </div>
             </CardContent>
@@ -242,23 +244,23 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
           {/* Status */}
           <Card>
             <CardHeader>
-              <CardTitle>État de la litière</CardTitle>
-              <CardDescription>Informations en temps réel</CardDescription>
+              <CardTitle>{t('litterBox.litterStatus')}</CardTitle>
+              <CardDescription>{t('feeder.realtimeInfo')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Sand Level */}
               {parsedStatus?.sensors?.litter_level && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Niveau de litière</span>
+                    <span className="text-sm font-medium">{t('litterBox.litterLevel')}</span>
                     <Badge variant={parsedStatus.sensors.litter_level === 'full' ? 'success' : 'outline'}>
-                      {parsedStatus.sensors.litter_level === 'full' ? '✓ Rempli' : parsedStatus.sensors.litter_level === 'half' ? '½ Moyen' : parsedStatus.sensors.litter_level}
+                      {parsedStatus.sensors.litter_level === 'full' ? t('litterBox.filled') : parsedStatus.sensors.litter_level === 'half' ? t('litterBox.halfFilled') : parsedStatus.sensors.litter_level}
                     </Badge>
                   </div>
                   {parsedStatus.sensors.litter_level === 'half' && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <AlertTriangle className="h-4 w-4" />
-                      Pensez à remplir bientôt
+                      {t('litterBox.fillSoon')}
                     </div>
                   )}
                 </div>
@@ -268,7 +270,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               {/* Status */}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Statut</span>
+                <span className="text-sm font-medium">{t('common.status')}</span>
                 <Badge
                   variant={
                     parsedStatus?.system?.state === 'cleaning'
@@ -279,14 +281,14 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   }
                 >
                   {parsedStatus?.system?.state === 'cleaning'
-                    ? '🧹 Nettoyage'
+                    ? t('litterBox.statusCleaning')
                     : parsedStatus?.system?.state === 'cat_inside'
-                    ? '🐱 Chat dedans'
+                    ? t('litterBox.statusCatInside')
                     : parsedStatus?.system?.state === 'clumping'
-                    ? '⏱️ Agglomération'
+                    ? t('litterBox.statusClumping')
                     : parsedStatus?.system?.state === 'satnd_by'
-                    ? '💤 Veille'
-                    : parsedStatus?.system?.state || 'Inconnu'}
+                    ? t('litterBox.statusStandby')
+                    : parsedStatus?.system?.state || t('common.unknown')}
                 </Badge>
               </div>
 
@@ -295,7 +297,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Separator />
                   <div className="flex items-center gap-2 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm">Maintenance requise</span>
+                    <span className="text-sm">{t('litterBox.maintenanceRequired')}</span>
                   </div>
                 </>
               )}
@@ -305,7 +307,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   <Separator />
                   <div className="flex items-center gap-2 text-destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm">Alarme défaut: {parsedStatus.sensors.fault_alarm}</span>
+                    <span className="text-sm">{t('litterBox.faultAlarm', { code: parsedStatus.sensors.fault_alarm })}</span>
                   </div>
                 </>
               )}
@@ -317,14 +319,14 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full">
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    Réinitialiser le niveau de litière
+                    {t('litterBox.resetLitterLevel')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Réinitialiser le niveau ?</DialogTitle>
+                    <DialogTitle>{t('litterBox.resetLitterLevelTitle')}</DialogTitle>
                     <DialogDescription>
-                      Confirmez que vous avez rempli la litière. Le compteur sera remis à 100%.
+                      {t('litterBox.resetLitterLevelDescription')}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
@@ -332,7 +334,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                       variant="outline"
                       onClick={() => setIsResetDialogOpen(false)}
                     >
-                      Annuler
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       onClick={() => {
@@ -342,7 +344,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                         setIsResetDialogOpen(false)
                       }}
                     >
-                      Confirmer
+                      {t('common.confirm')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -359,15 +361,15 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Moon className="h-5 w-5" />
-                Mode nuit
+                {t('litterBox.nightMode')}
               </CardTitle>
               <CardDescription>
-                Désactive le nettoyage automatique pendant la nuit
+                {t('litterBox.nightModeDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Activer le mode nuit</Label>
+                <Label>{t('litterBox.enableNightMode')}</Label>
                 <Switch
                   checked={parsedStatus?.sleep_mode?.enabled ?? false}
                   onCheckedChange={(checked) =>
@@ -383,7 +385,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Début</Label>
+                  <Label>{t('litterBox.start')}</Label>
                   <Input
                     type="time"
                     value={sleepStart}
@@ -391,12 +393,12 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   />
                   {parsedStatus?.sleep_mode?.start_time_formatted && (
                     <p className="text-xs text-muted-foreground">
-                      Actuel: {parsedStatus.sleep_mode.start_time_formatted}
+                      {t('common.current')}: {parsedStatus.sleep_mode.start_time_formatted}
                     </p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Fin</Label>
+                  <Label>{t('litterBox.end')}</Label>
                   <Input
                     type="time"
                     value={sleepEnd}
@@ -404,7 +406,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                   />
                   {parsedStatus?.sleep_mode?.end_time_formatted && (
                     <p className="text-xs text-muted-foreground">
-                      Actuel: {parsedStatus.sleep_mode.end_time_formatted}
+                      {t('common.current')}: {parsedStatus.sleep_mode.end_time_formatted}
                     </p>
                   )}
                 </div>
@@ -424,7 +426,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
                 disabled={settingsMutation.isPending}
                 className="w-full"
               >
-                Appliquer les horaires
+                {t('litterBox.applySchedule')}
               </Button>
             </CardContent>
           </Card>
@@ -434,10 +436,10 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                Préférences
+                {t('litterBox.preferences')}
               </CardTitle>
               <CardDescription>
-                Personnalisez le comportement
+                {t('litterBox.preferencesDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -445,7 +447,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Lock className="h-4 w-4 text-muted-foreground" />
-                  <Label>Verrouillage enfant</Label>
+                  <Label>{t('litterBox.childLock')}</Label>
                 </div>
                 <Switch
                   checked={parsedStatus?.settings?.child_lock ?? false}
@@ -464,7 +466,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Baby className="h-4 w-4 text-muted-foreground" />
-                  <Label>Mode chaton</Label>
+                  <Label>{t('litterBox.kittenMode')}</Label>
                 </div>
                 <Switch
                   checked={parsedStatus?.settings?.kitten_mode ?? false}
@@ -483,7 +485,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-muted-foreground" />
-                  <Label>Éclairage</Label>
+                  <Label>{t('litterBox.lighting')}</Label>
                 </div>
                 <Switch
                   checked={parsedStatus?.settings?.lighting ?? false}
@@ -502,7 +504,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Volume2 className="h-4 w-4 text-muted-foreground" />
-                  <Label>Sons</Label>
+                  <Label>{t('litterBox.sounds')}</Label>
                 </div>
                 <Switch
                   checked={parsedStatus?.settings?.prompt_sound ?? false}
@@ -521,7 +523,7 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Home className="h-4 w-4 text-muted-foreground" />
-                  <Label>Retour automatique</Label>
+                  <Label>{t('litterBox.automaticHoming')}</Label>
                 </div>
                 <Switch
                   checked={parsedStatus?.settings?.automatic_homing ?? false}
