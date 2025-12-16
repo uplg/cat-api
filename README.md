@@ -8,7 +8,7 @@ A Node.js multi-device API built with Elysia for monitoring and controlling loca
 
 - **Device Status**: Real-time status monitoring for all connected devices
 - **Connection Management**: Connect/disconnect all devices or individual devices
-- **Device Types**: Support for feeders and litter boxes with type-specific endpoints
+- **Device Types**: Support for feeders, fountains and litter boxes with type-specific endpoints
 
 ### 🍽️ Smart Feeder Control
 
