@@ -34,6 +34,8 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
             ip: device.config.ip,
             version: device.config.version,
             connected: device.isConnected,
+            connecting: device.isConnecting,
+            reconnect_attempts: device.reconnectAttempts,
             last_data: device.lastData,
             parsed_data: device.parsedData,
           }));
@@ -49,6 +51,32 @@ export function createDeviceRoutes(deviceManager: DeviceManager) {
           response: DevicesListResponseSchema,
         }
       )
+
+      // 📊 Connection Statistics
+      .get("/stats", () => {
+        const stats = deviceManager.getConnectionStats();
+        return {
+          success: true,
+          ...stats,
+        };
+      })
+
+      // 🔄 Force reconnection of disconnected devices
+      .post("/reconnect", async ({ set }) => {
+        try {
+          await deviceManager.reconnectDisconnected();
+          return {
+            success: true,
+            message: "Reconnection initiated for disconnected devices",
+          };
+        } catch (error) {
+          set.status = 500;
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+        }
+      })
 
       .post(
         "/connect",

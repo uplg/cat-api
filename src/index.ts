@@ -17,10 +17,25 @@ const JWT_SECRET = process.env.JWT_SECRET || "super-secret-cat-key-change-me";
 // 🔧 Device Manager Initialization
 const deviceManager = new DeviceManager();
 
+// Initialize and connect all devices on startup
 (async () => {
   await deviceManager.initializeDevices();
   console.log("🚀 Device manager initialized");
+
+  // Connect to all devices at startup
+  console.log("🔗 Connecting to all devices on startup...");
+  await deviceManager.connectAllDevices();
 })();
+
+// Handle graceful shutdown
+const gracefulShutdown = (signal: string) => {
+  console.log(`\n📴 Received ${signal}. Shutting down gracefully...`);
+  deviceManager.disconnectAllDevices();
+  process.exit(0);
+};
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 const app = new Elysia()
   // 🌐 CORS Configuration (before other middleware)
@@ -72,8 +87,10 @@ const app = new Elysia()
         "POST /auth/login",
         "POST /auth/verify",
         "GET /devices",
+        "GET /devices/stats",
         "POST /devices/connect",
         "POST /devices/disconnect",
+        "POST /devices/reconnect",
         "GET /devices/:deviceId/status",
         "POST /devices/:deviceId/feeder/feed",
         "GET /devices/:deviceId/feeder/status",

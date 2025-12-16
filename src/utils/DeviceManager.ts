@@ -21,6 +21,7 @@ export interface DeviceInstance {
   config: DeviceConfig;
   api: TuyAPI;
   isConnected: boolean;
+  isConnecting: boolean;
   lastData: DPSObject;
   parsedData:
     | ReturnType<typeof parseFeederStatus>
@@ -28,6 +29,8 @@ export interface DeviceInstance {
     | ReturnType<typeof parseFountainStatus>
     | {};
   type: "feeder" | "litter-box" | "fountain" | "unknown";
+  reconnectAttempts: number;
+  reconnectTimeout: NodeJS.Timeout | null;
 }
 
 interface MealPlanCache {
@@ -36,11 +39,24 @@ interface MealPlanCache {
 
 const MEAL_PLAN_CACHE_FILE = "meal-plans.json";
 
+// Connection configuration
+const CONNECTION_CONFIG = {
+  MAX_RECONNECT_ATTEMPTS: 10,
+  INITIAL_RECONNECT_DELAY_MS: 1000,
+  MAX_RECONNECT_DELAY_MS: 60000,
+  HEARTBEAT_INTERVAL_MS: 30000,
+  COMMAND_RETRY_ATTEMPTS: 3,
+  COMMAND_RETRY_DELAY_MS: 1000,
+  CONNECTION_TIMEOUT_MS: 10000,
+};
+
 export class DeviceManager {
   private devices: Map<string, DeviceInstance> = new Map();
   private configs: DeviceConfig[] = [];
   private mealPlanCache: Map<string, string> = new Map(); // deviceId -> encoded meal plan
   private mealPlanCachePath: string;
+  private heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private isShuttingDown: boolean = false;
 
   constructor() {
     this.mealPlanCachePath = path.join(process.cwd(), MEAL_PLAN_CACHE_FILE);
@@ -136,23 +152,52 @@ export class DeviceManager {
           config,
           api,
           isConnected: false,
+          isConnecting: false,
           lastData: { dps: {} },
           parsedData: {},
           type: deviceType,
+          reconnectAttempts: 0,
+          reconnectTimeout: null,
         };
 
         api.on("connected", () => {
           console.log(`✅ Device connected: ${config.name} (${config.id})`);
           deviceInstance.isConnected = true;
+          deviceInstance.isConnecting = false;
+          deviceInstance.reconnectAttempts = 0;
+
+          // Clear any pending reconnect timeout
+          if (deviceInstance.reconnectTimeout) {
+            clearTimeout(deviceInstance.reconnectTimeout);
+            deviceInstance.reconnectTimeout = null;
+          }
+
+          // Start heartbeat for this device
+          this.startHeartbeat(config.id);
         });
 
         api.on("disconnected", () => {
           console.log(`❌ Device disconnected: ${config.name} (${config.id})`);
           deviceInstance.isConnected = false;
+          deviceInstance.isConnecting = false;
+
+          // Stop heartbeat
+          this.stopHeartbeat(config.id);
+
+          // Schedule reconnection if not shutting down
+          if (!this.isShuttingDown) {
+            this.scheduleReconnect(config.id);
+          }
         });
 
         api.on("error", (error) => {
           console.log(`⚠️ Device error for ${config.name}:`, error.message);
+          deviceInstance.isConnecting = false;
+
+          // On error, also try to reconnect
+          if (!this.isShuttingDown && !deviceInstance.isConnected) {
+            this.scheduleReconnect(config.id);
+          }
         });
 
         api.on("data", (data) => {
@@ -246,6 +291,220 @@ export class DeviceManager {
     }
   }
 
+  // ==================== Connection Management ====================
+
+  /**
+   * Calculate exponential backoff delay for reconnection
+   */
+  private getReconnectDelay(attempts: number): number {
+    const delay = Math.min(
+      CONNECTION_CONFIG.INITIAL_RECONNECT_DELAY_MS * Math.pow(2, attempts),
+      CONNECTION_CONFIG.MAX_RECONNECT_DELAY_MS
+    );
+    // Add jitter to prevent thundering herd
+    return delay + Math.random() * 1000;
+  }
+
+  /**
+   * Schedule a reconnection attempt for a device
+   */
+  private scheduleReconnect(deviceId: string): void {
+    const device = this.devices.get(deviceId);
+    if (!device) return;
+
+    // Clear any existing reconnect timeout
+    if (device.reconnectTimeout) {
+      clearTimeout(device.reconnectTimeout);
+      device.reconnectTimeout = null;
+    }
+
+    // Check if we've exceeded max attempts
+    if (device.reconnectAttempts >= CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS) {
+      console.log(
+        `🚫 Max reconnection attempts reached for ${device.config.name}. Will retry on next API call.`
+      );
+      return;
+    }
+
+    const delay = this.getReconnectDelay(device.reconnectAttempts);
+    device.reconnectAttempts++;
+
+    console.log(
+      `🔄 Scheduling reconnection for ${device.config.name} in ${Math.round(
+        delay / 1000
+      )}s (attempt ${device.reconnectAttempts}/${
+        CONNECTION_CONFIG.MAX_RECONNECT_ATTEMPTS
+      })`
+    );
+
+    device.reconnectTimeout = setTimeout(async () => {
+      if (this.isShuttingDown || device.isConnected || device.isConnecting) {
+        return;
+      }
+
+      try {
+        await this.connectDeviceWithTimeout(deviceId);
+      } catch (error) {
+        console.log(
+          `⚠️ Reconnection failed for ${device.config.name}:`,
+          error instanceof Error ? error.message : error
+        );
+        // Will be rescheduled by the disconnect event
+      }
+    }, delay);
+  }
+
+  /**
+   * Connect to a device with timeout
+   */
+  private async connectDeviceWithTimeout(deviceId: string): Promise<boolean> {
+    const device = this.devices.get(deviceId);
+    if (!device) {
+      throw new Error(`Device ${deviceId} not found`);
+    }
+
+    if (device.isConnected) {
+      return true;
+    }
+
+    if (device.isConnecting) {
+      // Wait for existing connection attempt
+      return new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (!device.isConnecting) {
+            clearInterval(checkInterval);
+            resolve(device.isConnected);
+          }
+        }, 100);
+
+        // Timeout the wait
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve(device.isConnected);
+        }, CONNECTION_CONFIG.CONNECTION_TIMEOUT_MS);
+      });
+    }
+
+    device.isConnecting = true;
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        device.isConnecting = false;
+        reject(new Error(`Connection timeout for ${device.config.name}`));
+      }, CONNECTION_CONFIG.CONNECTION_TIMEOUT_MS);
+
+      device.api
+        .connect()
+        .then(() => {
+          clearTimeout(timeout);
+          resolve(true);
+        })
+        .catch((error) => {
+          clearTimeout(timeout);
+          device.isConnecting = false;
+          reject(error);
+        });
+    });
+  }
+
+  /**
+   * Start heartbeat for a device to keep connection alive
+   */
+  private startHeartbeat(deviceId: string): void {
+    this.stopHeartbeat(deviceId);
+
+    const device = this.devices.get(deviceId);
+    if (!device) return;
+
+    const interval = setInterval(async () => {
+      if (!device.isConnected || this.isShuttingDown) {
+        this.stopHeartbeat(deviceId);
+        return;
+      }
+
+      try {
+        // Send a lightweight status request to keep connection alive
+        await device.api.get({ schema: true });
+        console.log(`💓 Heartbeat OK for ${device.config.name}`);
+      } catch (error) {
+        console.log(
+          `💔 Heartbeat failed for ${device.config.name}:`,
+          error instanceof Error ? error.message : error
+        );
+        // Connection will be handled by disconnect event
+      }
+    }, CONNECTION_CONFIG.HEARTBEAT_INTERVAL_MS);
+
+    this.heartbeatIntervals.set(deviceId, interval);
+  }
+
+  /**
+   * Stop heartbeat for a device
+   */
+  private stopHeartbeat(deviceId: string): void {
+    const interval = this.heartbeatIntervals.get(deviceId);
+    if (interval) {
+      clearInterval(interval);
+      this.heartbeatIntervals.delete(deviceId);
+    }
+  }
+
+  /**
+   * Ensure a device is connected, with retry logic
+   */
+  private async ensureConnected(deviceId: string): Promise<void> {
+    const device = this.devices.get(deviceId);
+    if (!device) {
+      throw new Error(`Device ${deviceId} not found`);
+    }
+
+    if (device.isConnected) {
+      return;
+    }
+
+    // Reset reconnect attempts for manual connection
+    device.reconnectAttempts = 0;
+
+    let lastError: Error | null = null;
+    for (
+      let attempt = 1;
+      attempt <= CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS;
+      attempt++
+    ) {
+      try {
+        console.log(
+          `🔌 Connecting to ${device.config.name} (attempt ${attempt}/${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS})...`
+        );
+        await this.connectDeviceWithTimeout(deviceId);
+
+        if (device.isConnected) {
+          return;
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.log(
+          `⚠️ Connection attempt ${attempt} failed for ${device.config.name}:`,
+          lastError.message
+        );
+
+        if (attempt < CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS) {
+          await this.delay(CONNECTION_CONFIG.COMMAND_RETRY_DELAY_MS * attempt);
+        }
+      }
+    }
+
+    throw new Error(
+      `Failed to connect to ${device.config.name} after ${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} attempts: ${lastError?.message}`
+    );
+  }
+
+  /**
+   * Helper to delay execution
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   async connectDevice(deviceId: string): Promise<boolean> {
     const device = this.devices.get(deviceId);
     if (!device) {
@@ -253,8 +512,8 @@ export class DeviceManager {
     }
 
     try {
-      await device.api.connect();
-      return true;
+      await this.connectDeviceWithTimeout(deviceId);
+      return device.isConnected;
     } catch (error) {
       console.error(`Failed to connect device ${deviceId}:`, error);
       return false;
@@ -267,26 +526,56 @@ export class DeviceManager {
       throw new Error(`Device ${deviceId} not found`);
     }
 
+    // Stop heartbeat and cancel reconnection
+    this.stopHeartbeat(deviceId);
+    if (device.reconnectTimeout) {
+      clearTimeout(device.reconnectTimeout);
+      device.reconnectTimeout = null;
+    }
+
     device.api.disconnect();
   }
 
   async connectAllDevices(): Promise<void> {
     console.log("🔗 Connecting to all devices...");
 
-    for (const [deviceId, device] of Array.from(this.devices)) {
-      try {
-        await this.connectDevice(deviceId);
-      } catch (error) {
-        console.error(`Failed to connect ${device.config.name}:`, error);
+    const connectionPromises = Array.from(this.devices).map(
+      async ([deviceId, device]) => {
+        try {
+          await this.connectDevice(deviceId);
+          console.log(`✅ Connected to ${device.config.name}`);
+        } catch (error) {
+          console.error(
+            `⚠️ Failed to connect ${device.config.name}:`,
+            error instanceof Error ? error.message : error
+          );
+          // Schedule reconnection for failed devices
+          this.scheduleReconnect(deviceId);
+        }
       }
-    }
+    );
+
+    await Promise.allSettled(connectionPromises);
+
+    const connectedCount = Array.from(this.devices.values()).filter(
+      (d) => d.isConnected
+    ).length;
+    console.log(
+      `🔗 Connection complete: ${connectedCount}/${this.devices.size} devices connected`
+    );
   }
 
   disconnectAllDevices(): void {
     console.log("🔌 Disconnecting all devices...");
+    this.isShuttingDown = true;
 
     for (const [deviceId, device] of Array.from(this.devices)) {
       try {
+        this.stopHeartbeat(deviceId);
+        if (device.reconnectTimeout) {
+          clearTimeout(device.reconnectTimeout);
+          device.reconnectTimeout = null;
+        }
         device.api.disconnect();
       } catch (error) {
         console.error(`Failed to disconnect ${device.config.name}:`, error);
@@ -310,22 +599,55 @@ export class DeviceManager {
     deviceId: string,
     dps: number,
     value: string | number | boolean,
-    disconnectAfter: boolean = true
+    disconnectAfter: boolean = false
   ): Promise<void> {
     const device = this.devices.get(deviceId);
     if (!device) {
       throw new Error(`Device ${deviceId} not found`);
     }
 
-    if (!device.isConnected) {
-      await this.connectDevice(deviceId);
+    let lastError: Error | null = null;
+
+    for (
+      let attempt = 1;
+      attempt <= CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS;
+      attempt++
+    ) {
+      try {
+        // Ensure connected
+        await this.ensureConnected(deviceId);
+
+        // Send command
+        await device.api.set({ dps, set: value });
+        console.log(
+          `📤 Command sent to ${device.config.name}: DPS ${dps} = ${value}`
+        );
+
+        // Don't disconnect by default to maintain connection
+        if (disconnectAfter) {
+          await this.disconnectDevice(deviceId);
+        }
+
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.log(
+          `⚠️ Command attempt ${attempt}/${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} failed for ${device.config.name}:`,
+          lastError.message
+        );
+
+        // On error, mark as disconnected and retry
+        device.isConnected = false;
+
+        if (attempt < CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS) {
+          await this.delay(CONNECTION_CONFIG.COMMAND_RETRY_DELAY_MS * attempt);
+        }
+      }
     }
 
-    await device.api.set({ dps, set: value });
-
-    if (disconnectAfter) {
-      await this.disconnectDevice(deviceId);
-    }
+    throw new Error(
+      `Failed to send command to ${device.config.name} after ${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} attempts: ${lastError?.message}`
+    );
   }
 
   async getDeviceStatus(deviceId: string): Promise<DPSObject> {
@@ -334,15 +656,88 @@ export class DeviceManager {
       throw new Error(`Device ${deviceId} not found`);
     }
 
-    if (!device.isConnected) {
-      await this.connectDevice(deviceId);
+    let lastError: Error | null = null;
+
+    for (
+      let attempt = 1;
+      attempt <= CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS;
+      attempt++
+    ) {
+      try {
+        // Ensure connected
+        await this.ensureConnected(deviceId);
+
+        // Get status
+        const response = (await device.api.get({ schema: true })) as DPSObject;
+        console.log(`📥 Status received from ${device.config.name}`);
+
+        // Don't disconnect - maintain connection
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.log(
+          `⚠️ Status request attempt ${attempt}/${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} failed for ${device.config.name}:`,
+          lastError.message
+        );
+
+        // On error, mark as disconnected and retry
+        device.isConnected = false;
+
+        if (attempt < CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS) {
+          await this.delay(CONNECTION_CONFIG.COMMAND_RETRY_DELAY_MS * attempt);
+        }
+      }
     }
 
-    const response = (await device.api.get({ schema: true })) as DPSObject;
+    throw new Error(
+      `Failed to get status from ${device.config.name} after ${CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS} attempts: ${lastError?.message}`
+    );
+  }
 
-    device.api.disconnect();
+  /**
+   * Get connection statistics for all devices
+   */
+  getConnectionStats(): {
+    total: number;
+    connected: number;
+    disconnected: number;
+    devices: Array<{
+      id: string;
+      name: string;
+      type: string;
+      isConnected: boolean;
+      reconnectAttempts: number;
+    }>;
+  } {
+    const devices = Array.from(this.devices.values());
+    const connected = devices.filter((d) => d.isConnected).length;
 
-    return response;
+    return {
+      total: devices.length,
+      connected,
+      disconnected: devices.length - connected,
+      devices: devices.map((d) => ({
+        id: d.config.id,
+        name: d.config.name,
+        type: d.type,
+        isConnected: d.isConnected,
+        reconnectAttempts: d.reconnectAttempts,
+      })),
+    };
+  }
+
+  /**
+   * Force reconnection of all disconnected devices
+   */
+  async reconnectDisconnected(): Promise<void> {
+    console.log("🔄 Reconnecting disconnected devices...");
+
+    for (const [deviceId, device] of Array.from(this.devices)) {
+      if (!device.isConnected && !device.isConnecting) {
+        device.reconnectAttempts = 0;
+        this.scheduleReconnect(deviceId);
+      }
+    }
   }
 
   // Meal Plan Cache Management
