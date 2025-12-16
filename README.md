@@ -1,6 +1,6 @@
 # 🐱 Cat API
 
-A Node.js multi-device API built with Elysia for monitoring and controlling locally Tuya-based smart cat feeders and automatic litter boxes. This API provides comprehensive device management, meal plan control, litter monitoring, and real-time device scanning across multiple devices simultaneously.
+A Node.js multi-device API built with Elysia for monitoring and controlling locally Tuya-based smart cat feeders, fountain and automatic litter boxes. This API provides comprehensive device management, meal plan control, fountain and litter monitoring/interacton, and real-time device scanning across multiple devices simultaneously.
 
 ## 🚀 Features
 
