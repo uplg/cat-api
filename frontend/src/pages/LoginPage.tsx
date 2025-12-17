@@ -100,11 +100,6 @@ export function LoginPage() {
               )}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>{t('auth.testUsers')}</p>
-            <p className="font-mono text-xs">admin / catadmin123</p>
-            <p className="font-mono text-xs">user / catuser123</p>
-          </div>
         </CardContent>
       </Card>
     </div>

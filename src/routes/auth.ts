@@ -3,7 +3,6 @@ import { jwt } from "@elysiajs/jwt";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
-// Users loaded from users.json
 interface User {
   id: string;
   username: string;
@@ -31,8 +30,6 @@ function loadUsers(): User[] {
 }
 
 const USERS = loadUsers();
-
-// JWT Secret (should be in .env in production)
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-cat-key-change-me";
 
 export function createAuthRoutes() {

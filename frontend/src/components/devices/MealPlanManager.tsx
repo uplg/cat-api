@@ -224,7 +224,6 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
 
-  // Sync with initial data
   useEffect(() => {
     if (initialMealPlan) {
       setMealPlan(initialMealPlan)
@@ -232,7 +231,6 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
     }
   }, [initialMealPlan])
 
-  // Save mutation
   const saveMutation = useMutation({
     mutationFn: (plan: MealPlanEntry[]) => feederApi.setMealPlan(deviceId, plan),
     onSuccess: () => {
@@ -305,12 +303,10 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
       .join(', ')
   }
 
-  // Sort meals by time
   const sortedMealPlan = [...mealPlan].sort((a, b) => a.time.localeCompare(b.time))
 
   return (
     <div className="space-y-4">
-      {/* Header with save button */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
@@ -363,7 +359,6 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
         </div>
       )}
 
-      {/* Meal list */}
       {sortedMealPlan.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -390,7 +385,6 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
               >
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                    {/* Time display */}
                     <div
                       className={`flex h-12 w-full sm:h-16 sm:w-16 flex-row sm:flex-col items-center justify-center gap-2 sm:gap-0 rounded-xl ${
                         meal.status === 'Enabled'
@@ -402,7 +396,6 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
                       <span className="text-base sm:text-lg font-bold">{meal.time}</span>
                     </div>
 
-                    {/* Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <Badge variant="outline">
@@ -420,7 +413,6 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
                       </p>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-1 border-t pt-3 sm:border-0 sm:pt-0">
                       <Switch
                         checked={meal.status === 'Enabled'}
@@ -473,19 +465,18 @@ export function MealPlanManager({ deviceId, initialMealPlan }: MealPlanManagerPr
         </div>
       )}
 
-      {/* Summary */}
       {mealPlan.length > 0 && (
         <Card className="bg-muted/50">
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Total portions par jour (si tous actifs) :
+                {t('mealPlan.totalPortionsPerDay')}
               </span>
               <Badge variant="outline" className="text-base">
                 ~{mealPlan
                   .filter((m) => m.status === 'Enabled')
                   .reduce((acc, m) => acc + m.portion, 0)}{' '}
-                portions
+                {t('mealPlan.portions')}
               </Badge>
             </div>
           </CardContent>

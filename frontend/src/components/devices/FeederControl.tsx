@@ -35,20 +35,17 @@ export function FeederControl({ deviceId }: FeederControlProps) {
   const queryClient = useQueryClient()
   const [portions, setPortions] = useState([1])
 
-  // Fetch feeder status
   const { data: statusData, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['feeder', deviceId, 'status'],
     queryFn: () => feederApi.status(deviceId),
     refetchInterval: 15000,
   })
 
-  // Fetch meal plan
   const { data: mealPlanData, isLoading: isLoadingMealPlan } = useQuery({
     queryKey: ['feeder', deviceId, 'meal-plan'],
     queryFn: () => feederApi.getMealPlan(deviceId),
   })
 
-  // Feed mutation
   const feedMutation = useMutation({
     mutationFn: (portion: number) => feederApi.feed(deviceId, portion),
     onSuccess: () => {
@@ -89,7 +86,6 @@ export function FeederControl({ deviceId }: FeederControlProps) {
 
       <TabsContent value="control" className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Feed Control */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -142,7 +138,6 @@ export function FeederControl({ deviceId }: FeederControlProps) {
             </CardContent>
           </Card>
 
-          {/* Status Card */}
           <Card>
             <CardHeader>
               <CardTitle>{t('feeder.feederStatus')}</CardTitle>

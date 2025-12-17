@@ -15,7 +15,6 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="container flex h-14 items-center">
           <Link to="/" className="flex items-center gap-2 font-semibold">
@@ -23,7 +22,6 @@ export function Layout() {
             <span className="hidden xs:inline">Cat Monitor</span>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="ml-6 hidden items-center gap-4 md:flex">
             <Link to="/">
               <Button
@@ -36,7 +34,6 @@ export function Layout() {
             </Link>
           </nav>
 
-          {/* Desktop right side */}
           <div className="ml-auto hidden items-center gap-4 md:flex">
             <LanguageSwitcher />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -53,7 +50,6 @@ export function Layout() {
             </Button>
           </div>
 
-          {/* Mobile right side */}
           <div className="ml-auto flex items-center gap-2 md:hidden">
             <LanguageSwitcher />
             <Button
@@ -67,7 +63,6 @@ export function Layout() {
           </div>
         </div>
 
-        {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="border-t bg-background md:hidden">
             <div className="container py-4 space-y-4">
@@ -112,12 +107,10 @@ export function Layout() {
         )}
       </header>
 
-      {/* Main content */}
       <main className="flex-1 container py-6">
         <Outlet />
       </main>
 
-      {/* Footer */}
       <footer className="border-t py-4">
         <div className="container text-center text-sm text-muted-foreground">
           {t('layout.footer', { year: new Date().getFullYear() })}

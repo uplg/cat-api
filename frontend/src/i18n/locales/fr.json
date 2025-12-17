@@ -184,6 +184,7 @@
     "time": "Horaire",
     "portions": "Portions",
     "portionsPerMeal": "1 à 12 portions par repas",
+    "totalPortionsPerDay": "Portions totales par jour (si tous activés)",
     "days": "Jours",
     "enableMeal": "Activer ce repas",
     "disableTemporarily": "Désactiver temporairement sans supprimer",

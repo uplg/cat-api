@@ -55,14 +55,12 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
   const [sleepEnd, setSleepEnd] = useState('07:00')
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
 
-  // Fetch litter box status
   const { data: statusData, isLoading } = useQuery({
     queryKey: ['litter-box', deviceId, 'status'],
     queryFn: () => litterBoxApi.status(deviceId),
     refetchInterval: 15000,
   })
 
-  // Clean mutation
   const cleanMutation = useMutation({
     mutationFn: () => litterBoxApi.clean(deviceId),
     onSuccess: () => {
@@ -81,7 +79,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
     },
   })
 
-  // Settings mutation
   const settingsMutation = useMutation({
     mutationFn: (settings: Parameters<typeof litterBoxApi.settings>[1]) =>
       litterBoxApi.settings(deviceId, settings),
@@ -170,7 +167,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
       <TabsContent value="control" className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Quick Actions */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -241,14 +237,12 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
             </CardContent>
           </Card>
 
-          {/* Status */}
           <Card>
             <CardHeader>
               <CardTitle>{t('litterBox.litterStatus')}</CardTitle>
               <CardDescription>{t('feeder.realtimeInfo')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Sand Level */}
               {parsedStatus?.sensors?.litter_level && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -268,7 +262,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <Separator />
 
-              {/* Status */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{t('common.status')}</span>
                 <Badge
@@ -314,7 +307,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <Separator />
 
-              {/* Reset Sand Level */}
               <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full">
@@ -356,7 +348,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
       <TabsContent value="settings" className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Sleep Mode */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -431,7 +422,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
             </CardContent>
           </Card>
 
-          {/* Preferences */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -462,7 +452,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <Separator />
 
-              {/* Kitten Mode */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Baby className="h-4 w-4 text-muted-foreground" />
@@ -481,7 +470,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <Separator />
 
-              {/* Lighting */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-muted-foreground" />
@@ -500,7 +488,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <Separator />
 
-              {/* Prompt Sound */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Volume2 className="h-4 w-4 text-muted-foreground" />
@@ -519,7 +506,6 @@ export function LitterBoxControl({ deviceId }: LitterBoxControlProps) {
 
               <Separator />
 
-              {/* Automatic Homing */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Home className="h-4 w-4 text-muted-foreground" />

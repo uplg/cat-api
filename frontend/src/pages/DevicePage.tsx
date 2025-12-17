@@ -52,7 +52,6 @@ export function DevicePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link to="/">
           <Button variant="outline" size="icon">
@@ -80,7 +79,6 @@ export function DevicePage() {
         </div>
       </div>
 
-      {/* Device-specific controls */}
       {device.type === 'feeder' && <FeederControl deviceId={device.id} />}
       {device.type === 'fountain' && <FountainControl deviceId={device.id} />}
       {device.type === 'litter-box' && <LitterBoxControl deviceId={device.id} />}

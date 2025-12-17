@@ -137,13 +137,6 @@ export class DeviceManager {
   }
 
   /**
-   * Get a cached DPS value for a device
-   */
-  private getCachedDPS(deviceId: string, dpsId: string): unknown {
-    return this.deviceCache.get(deviceId)?.[dpsId];
-  }
-
-  /**
    * Get all cached DPS for a device
    */
   private getDeviceCachedDPS(deviceId: string): Record<string, unknown> {
@@ -343,8 +336,6 @@ export class DeviceManager {
     }
   }
 
-  // ==================== Connection Management ====================
-
   /**
    * Calculate exponential backoff delay for reconnection
    */
@@ -483,7 +474,6 @@ export class DeviceManager {
           `💔 Heartbeat failed for ${device.config.name}:`,
           error instanceof Error ? error.message : error
         );
-        // Connection will be handled by disconnect event
       }
     }, CONNECTION_CONFIG.HEARTBEAT_INTERVAL_MS);
 
@@ -733,16 +723,13 @@ export class DeviceManager {
       attempt++
     ) {
       try {
-        // Ensure connected
         await this.ensureConnected(deviceId);
 
-        // Send command
         await device.api.set({ dps, set: value });
         console.log(
           `📤 Command sent to ${device.config.name}: DPS ${dps} = ${value}`
         );
 
-        // Don't disconnect by default to maintain connection
         if (disconnectAfter) {
           await this.disconnectDevice(deviceId);
         }
@@ -755,7 +742,6 @@ export class DeviceManager {
           lastError.message
         );
 
-        // On error, mark as disconnected and retry
         device.isConnected = false;
 
         if (attempt < CONNECTION_CONFIG.COMMAND_RETRY_ATTEMPTS) {
@@ -782,10 +768,8 @@ export class DeviceManager {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        // Ensure connected
         await this.ensureConnected(deviceId);
 
-        // Get status with timeout to prevent blocking
         const response = await this.withTimeout(
           device.api.get({ schema: true }) as Promise<DPSObject>,
           CONNECTION_CONFIG.STATUS_REQUEST_TIMEOUT_MS,
@@ -817,7 +801,6 @@ export class DeviceManager {
           }
         }
 
-        // Don't disconnect - maintain connection
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -826,7 +809,6 @@ export class DeviceManager {
           lastError.message
         );
 
-        // Force disconnect to clean up bad socket state
         this.forceDisconnect(deviceId);
 
         if (attempt < maxAttempts) {

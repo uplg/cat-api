@@ -184,6 +184,7 @@
     "time": "Time",
     "portions": "Portions",
     "portionsPerMeal": "1 to 12 portions per meal",
+    "totalPortionsPerDay": "Total portions per day (if all enabled)",
     "days": "Days",
     "enableMeal": "Enable this meal",
     "disableTemporarily": "Temporarily disable without deleting",

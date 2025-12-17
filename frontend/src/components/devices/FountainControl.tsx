@@ -35,14 +35,12 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
-  // Fetch fountain status
   const { data: statusData, isLoading } = useQuery({
     queryKey: ['fountain', deviceId, 'status'],
     queryFn: () => fountainApi.status(deviceId),
     refetchInterval: 10000,
   })
 
-  // Mutations
   const powerMutation = useMutation({
     mutationFn: (enabled: boolean) => fountainApi.power(deviceId, enabled),
     onSuccess: (_, enabled) => {
@@ -142,11 +140,11 @@ export function FountainControl({ deviceId }: FountainControlProps) {
   const parsedStatus = statusData?.parsed_status as {
     power?: boolean
     uv_enabled?: boolean
-    uv_runtime?: number  // en SECONDES, > 0 = UV actif
+    uv_runtime?: number  // in seconds, > 0 = UV active
     eco_mode?: number  // 0 = off, 1 = mode 1, 2 = mode 2
     water_level?: string
-    filter_life?: number  // en minutes
-    pump_time?: number    // en minutes
+    filter_life?: number  // in minutes
+    pump_time?: number    // in minutes
     water_time?: number
   } | undefined
 
@@ -203,7 +201,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {/* Controls */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -215,7 +212,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Power */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
@@ -237,7 +233,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
 
           <Separator />
 
-          {/* UV */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isUvActive ? 'bg-yellow-200' : 'bg-yellow-100'}`}>
@@ -268,7 +263,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
 
           <Separator />
 
-          {/* Eco Mode */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
@@ -305,7 +299,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
         </CardContent>
       </Card>
 
-      {/* Status & Maintenance */}
       <Card>
         <CardHeader>
           <CardTitle>{t('fountain.statusMaintenance')}</CardTitle>
@@ -314,7 +307,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Water Level */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -347,7 +339,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
 
           <Separator />
 
-          {/* Filter Life */}
           {parsedStatus?.filter_life !== undefined && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -376,7 +367,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
 
           <Separator />
 
-          {/* Pump Time */}
           {parsedStatus?.pump_time !== undefined && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -403,7 +393,6 @@ export function FountainControl({ deviceId }: FountainControlProps) {
             </div>
           )}
 
-          {/* Water Time Reset */}
           <Separator />
           <div className="space-y-2">
             <div className="flex items-center gap-2">
