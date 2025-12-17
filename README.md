@@ -201,13 +201,13 @@ If no users.json defined (rename/modify users.json.template), user: admin, passw
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     Docker Network                       │
-│                                                          │
-│   ┌──────────────┐          ┌──────────────────────┐   │
-│   │   Frontend   │   /api   │       Backend        │   │
-│   │    (nginx)   │ ──────▶  │      (Elysia)        │   │
-│   │    :80       │          │       :3000          │   │
-│   └──────────────┘          └──────────────────────┘   │
+│                     Docker Network                      │
+│                                                         │
+│   ┌──────────────┐          ┌──────────────────────┐    │
+│   │   Frontend   │   /api   │       Backend        │    │
+│   │    (nginx)   │ ──────▶  │      (Elysia)        │    │
+│   │    :80       │          │       :3000          │    │
+│   └──────────────┘          └──────────────────────┘    │
 │          │                            │                 │
 └──────────┼────────────────────────────┼─────────────────┘
            │                            │
@@ -291,6 +291,7 @@ The API includes comprehensive logging. Check the console output for:
 
 ### Tech Stack
 
+```
 | Layer    | Technology                              |
 | -------- | --------------------------------------- |
 | Backend  | Elysia, Bun, TuyAPI                     |
