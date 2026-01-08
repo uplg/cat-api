@@ -438,6 +438,37 @@ export class HueLampManager {
   }
 
   /**
+   * Normalize UUID for comparison
+   * Noble may return short UUIDs (e.g., "2a24") or long UUIDs without dashes
+   */
+  private normalizeUuid(uuid: string): string {
+    return uuid.replace(/-/g, "").toLowerCase();
+  }
+
+  /**
+   * Check if a UUID matches (handles both short and long formats)
+   * Short format: "2a24" matches "00002a24-0000-1000-8000-00805f9b34fb"
+   */
+  private uuidMatches(charUuid: string, targetUuid: string): boolean {
+    const normalizedChar = this.normalizeUuid(charUuid);
+    const normalizedTarget = this.normalizeUuid(targetUuid);
+
+    // Exact match
+    if (normalizedChar === normalizedTarget) {
+      return true;
+    }
+
+    // Short UUID match (e.g., "2a24" should match the standard Bluetooth UUID)
+    // Standard Bluetooth UUIDs have format: 0000XXXX-0000-1000-8000-00805f9b34fb
+    // where XXXX is the short UUID
+    if (normalizedChar.length === 4) {
+      return normalizedTarget.startsWith(`0000${normalizedChar}`);
+    }
+
+    return false;
+  }
+
+  /**
    * Discover BLE characteristics for a lamp
    */
   private async discoverCharacteristics(lampId: string): Promise<void> {
@@ -448,33 +479,24 @@ export class HueLampManager {
       await lamp.peripheral.discoverAllServicesAndCharacteristicsAsync();
 
     for (const char of characteristics) {
-      const uuid = char.uuid.toLowerCase();
+      const uuid = char.uuid;
 
-      switch (uuid) {
-        case HUE_UUIDS.POWER.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.power = char;
-          break;
-        case HUE_UUIDS.BRIGHTNESS.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.brightness = char;
-          break;
-        case HUE_UUIDS.TEMPERATURE.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.temperature = char;
-          break;
-        case HUE_UUIDS.CONTROL.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.control = char;
-          break;
-        case HUE_UUIDS.MODEL.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.model = char;
-          break;
-        case HUE_UUIDS.FIRMWARE.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.firmware = char;
-          break;
-        case HUE_UUIDS.MANUFACTURER.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.manufacturer = char;
-          break;
-        case HUE_UUIDS.DEVICE_NAME.replace(/-/g, "").toLowerCase():
-          lamp.characteristics.deviceName = char;
-          break;
+      if (this.uuidMatches(uuid, HUE_UUIDS.POWER)) {
+        lamp.characteristics.power = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.BRIGHTNESS)) {
+        lamp.characteristics.brightness = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.TEMPERATURE)) {
+        lamp.characteristics.temperature = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.CONTROL)) {
+        lamp.characteristics.control = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.MODEL)) {
+        lamp.characteristics.model = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.FIRMWARE)) {
+        lamp.characteristics.firmware = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.MANUFACTURER)) {
+        lamp.characteristics.manufacturer = char;
+      } else if (this.uuidMatches(uuid, HUE_UUIDS.DEVICE_NAME)) {
+        lamp.characteristics.deviceName = char;
       }
     }
 
