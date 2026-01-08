@@ -23,6 +23,8 @@ export interface HueLampConfig {
   name: string;
   address: string;
   model?: string;
+  /** True if we've successfully connected to this lamp at least once */
+  hasConnectedOnce?: boolean;
 }
 
 export interface HueLampInstance {
@@ -45,6 +47,10 @@ export interface HueLampInstance {
   lastSeen: Date | null;
   reconnectAttempts: number;
   reconnectTimeout: NodeJS.Timeout | null;
+  /** True if the lamp requires pairing (not owned/authorized) */
+  pairingRequired: boolean;
+  /** Number of consecutive connection failures */
+  connectionFailures: number;
 }
 
 // Manager configuration
@@ -56,21 +62,27 @@ const HUE_CONFIG = {
   CONNECTION_TIMEOUT_MS: 15000,
   POLL_INTERVAL_MS: 30000, // Poll state every 30 seconds
   LAMPS_CONFIG_FILE: "hue-lamps.json",
+  BLACKLIST_FILE: "hue-lamps-blacklist.json",
 };
 
 export class HueLampManager {
   private lamps: Map<string, HueLampInstance> = new Map();
   private configs: HueLampConfig[] = [];
   private discoveredPeripherals: Map<string, Peripheral> = new Map();
+  /** Blacklisted addresses (unauthorized/unpaired lamps) */
+  private blacklistedAddresses: Set<string> = new Set();
   private isScanning: boolean = false;
   private scanInterval: NodeJS.Timeout | null = null;
   private pollInterval: NodeJS.Timeout | null = null;
   private isInitialized: boolean = false;
   private configPath: string;
+  private blacklistPath: string;
 
   constructor() {
     this.configPath = path.join(process.cwd(), HUE_CONFIG.LAMPS_CONFIG_FILE);
+    this.blacklistPath = path.join(process.cwd(), HUE_CONFIG.BLACKLIST_FILE);
     this.loadConfig();
+    this.loadBlacklist();
     this.setupNobleEventHandlers();
   }
 
@@ -94,6 +106,87 @@ export class HueLampManager {
   }
 
   /**
+   * Load blacklisted addresses from file
+   */
+  private loadBlacklist(): void {
+    try {
+      if (fs.existsSync(this.blacklistPath)) {
+        const data = fs.readFileSync(this.blacklistPath, "utf8");
+        const addresses: string[] = JSON.parse(data);
+        this.blacklistedAddresses = new Set(addresses);
+        console.log(
+          `🚫 Loaded ${this.blacklistedAddresses.size} blacklisted lamp addresses`
+        );
+      }
+    } catch (error) {
+      console.error("❌ Failed to load blacklist:", error);
+    }
+  }
+
+  /**
+   * Save blacklisted addresses to file
+   */
+  private saveBlacklist(): void {
+    try {
+      const addresses = Array.from(this.blacklistedAddresses);
+      fs.writeFileSync(this.blacklistPath, JSON.stringify(addresses, null, 2));
+      console.log(`💾 Saved ${addresses.length} blacklisted addresses`);
+    } catch (error) {
+      console.error("❌ Failed to save blacklist:", error);
+    }
+  }
+
+  /**
+   * Add an address to the blacklist
+   */
+  private blacklistAddress(address: string, name: string): void {
+    this.blacklistedAddresses.add(address);
+    this.saveBlacklist();
+    console.log(`🚫 Blacklisted lamp: ${name} (${address})`);
+  }
+
+  /**
+   * Manually blacklist and remove a lamp by ID
+   * Use this for lamps that are stuck in config but can't be reached
+   */
+  blacklistLamp(lampId: string): boolean {
+    const lamp = this.lamps.get(lampId);
+    const config = this.configs.find((c) => c.id === lampId);
+
+    if (!lamp && !config) {
+      return false;
+    }
+
+    const name = lamp?.config.name || config?.name || lampId;
+    const address = lamp?.config.address || config?.address || lampId;
+
+    console.log(`🚫 Manually blacklisting lamp: ${name}`);
+    this.removeLampFromConfig(lampId);
+
+    return true;
+  }
+
+  /**
+   * Get list of blacklisted addresses
+   */
+  getBlacklist(): string[] {
+    return Array.from(this.blacklistedAddresses);
+  }
+
+  /**
+   * Remove an address from blacklist (to allow re-discovery)
+   */
+  unblacklistAddress(address: string): boolean {
+    if (this.blacklistedAddresses.has(address)) {
+      this.blacklistedAddresses.delete(address);
+      this.saveBlacklist();
+      console.log(`✅ Removed ${address} from blacklist`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Save lamp configurations to file
    */
   private saveConfig(): void {
@@ -102,6 +195,39 @@ export class HueLampManager {
       console.log(`💾 Saved ${this.configs.length} Hue lamp configurations`);
     } catch (error) {
       console.error("❌ Failed to save Hue lamp configuration:", error);
+    }
+  }
+
+  /**
+   * Remove a lamp from config (for unauthorized/unpaired lamps)
+   * Also adds the address to the blacklist to prevent re-discovery
+   */
+  private removeLampFromConfig(lampId: string): void {
+    const lamp = this.lamps.get(lampId);
+    const configIndex = this.configs.findIndex((c) => c.id === lampId);
+
+    if (configIndex !== -1) {
+      const config = this.configs[configIndex];
+      const lampName = config.name;
+      const lampAddress = config.address;
+
+      // Add to blacklist to prevent re-discovery
+      this.blacklistAddress(lampAddress, lampName);
+      if (lampId !== lampAddress) {
+        this.blacklistAddress(lampId, lampName);
+      }
+
+      this.configs.splice(configIndex, 1);
+      this.saveConfig();
+      console.log(`🗑️ Removed unauthorized lamp from config: ${lampName}`);
+    }
+
+    // Also remove from lamps map
+    if (lamp) {
+      if (lamp.reconnectTimeout) {
+        clearTimeout(lamp.reconnectTimeout);
+      }
+      this.lamps.delete(lampId);
     }
   }
 
@@ -145,16 +271,25 @@ export class HueLampManager {
     const address = peripheral.address || peripheral.id;
 
     // Debug: log all discovered devices with names (uncomment for debugging)
-    // if (localName) {
-    //   console.log(
-    //     `🔎 BLE device: ${localName} (${address}) services: ${
-    //       serviceUuids.join(", ") || "none"
-    //     }`
-    //   );
-    // }
+    if (localName) {
+      console.log(
+        `🔎 BLE device: ${localName} (${address}) services: ${
+          serviceUuids.join(", ") || "none"
+        }`
+      );
+    }
 
     // Check if this looks like a Hue lamp
     if (!isHueLamp(localName, manufacturerData, serviceUuids)) {
+      return;
+    }
+
+    // Check if this address is blacklisted (unauthorized lamp)
+    if (
+      this.blacklistedAddresses.has(address) ||
+      this.blacklistedAddresses.has(peripheral.id)
+    ) {
+      // Silently ignore blacklisted lamps
       return;
     }
 
@@ -225,6 +360,8 @@ export class HueLampManager {
       lastSeen: null,
       reconnectAttempts: 0,
       reconnectTimeout: null,
+      pairingRequired: false,
+      connectionFailures: 0,
     };
 
     this.lamps.set(config.id, instance);
@@ -414,8 +551,11 @@ export class HueLampManager {
       // Discover services and characteristics
       await this.discoverCharacteristics(lampId);
 
-      // Read initial state
-      await this.refreshLampState(lampId);
+      // Subscribe to notifications for real-time updates
+      await this.subscribeToNotifications(lampId);
+
+      // Read initial state (skip connection check as we're still connecting)
+      await this.refreshLampState(lampId, true);
 
       // Read device info
       await this.readDeviceInfo(lampId);
@@ -424,12 +564,81 @@ export class HueLampManager {
       lamp.isConnecting = false;
       lamp.state.reachable = true;
       lamp.reconnectAttempts = 0;
+      lamp.connectionFailures = 0;
+      lamp.pairingRequired = false; // Reset if connection succeeds
+
+      // Mark as successfully connected at least once
+      if (!lamp.config.hasConnectedOnce) {
+        lamp.config.hasConnectedOnce = true;
+        const configIndex = this.configs.findIndex((c) => c.id === lampId);
+        if (configIndex !== -1) {
+          this.configs[configIndex].hasConnectedOnce = true;
+          this.saveConfig();
+        }
+      }
 
       return true;
     } catch (error) {
-      console.error(`❌ Failed to connect to ${lamp.config.name}:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(
+        `❌ Failed to connect to ${lamp.config.name}:`,
+        errorMessage
+      );
       lamp.isConnecting = false;
       lamp.state.reachable = false;
+      lamp.connectionFailures++;
+
+      // Detect authorization/pairing errors or persistent connection issues
+      // These indicate the lamp belongs to someone else, needs pairing, or is unreachable
+      const isAuthError =
+        errorMessage.includes("401") ||
+        errorMessage.includes("Unauthorized") ||
+        errorMessage.includes("not authorized") ||
+        errorMessage.includes("pairing") ||
+        errorMessage.includes("authentication");
+
+      // Connection timeout after multiple failures suggests lamp is not ours
+      const isTimeoutError = errorMessage.toLowerCase().includes("timeout");
+
+      if (isAuthError) {
+        console.log(
+          `🔒 Lamp ${lamp.config.name} requires pairing (not authorized)`
+        );
+        lamp.pairingRequired = true;
+        // Only blacklist if we've NEVER connected to this lamp
+        if (!lamp.config.hasConnectedOnce) {
+          this.removeLampFromConfig(lampId);
+        }
+        return false;
+      }
+
+      // Timeout errors: only blacklist NEW lamps (never connected before)
+      if (
+        isTimeoutError &&
+        lamp.connectionFailures >= 3 &&
+        !lamp.config.hasConnectedOnce
+      ) {
+        console.log(
+          `⏱️ New lamp ${lamp.config.name} timed out ${lamp.connectionFailures} times, blacklisting`
+        );
+        lamp.pairingRequired = true;
+        this.removeLampFromConfig(lampId);
+        return false;
+      }
+
+      // If we've failed too many times on a NEW lamp, blacklist it
+      if (
+        lamp.connectionFailures >= HUE_CONFIG.MAX_RECONNECT_ATTEMPTS &&
+        !lamp.config.hasConnectedOnce
+      ) {
+        console.log(
+          `⚠️ New lamp ${lamp.config.name} failed ${lamp.connectionFailures} times, blacklisting`
+        );
+        lamp.pairingRequired = true;
+        this.removeLampFromConfig(lampId);
+        return false;
+      }
 
       this.scheduleReconnect(lampId);
       return false;
@@ -507,6 +716,96 @@ export class HueLampManager {
   }
 
   /**
+   * Subscribe to BLE notifications for real-time state updates
+   * This allows detecting changes made from the Hue app or other sources
+   */
+  private async subscribeToNotifications(lampId: string): Promise<void> {
+    const lamp = this.lamps.get(lampId);
+    if (!lamp) return;
+
+    try {
+      // Subscribe to power state notifications
+      if (lamp.characteristics.power) {
+        const powerChar = lamp.characteristics.power;
+
+        // Check if characteristic supports notifications
+        if (powerChar.properties.includes("notify")) {
+          powerChar.on("data", (data: Buffer) => {
+            const wasOn = lamp.state.isOn;
+            lamp.state.isOn = data[0] === 0x01;
+            if (wasOn !== lamp.state.isOn) {
+              console.log(
+                `💡 ${lamp.config.name} power changed: ${
+                  lamp.state.isOn ? "ON" : "OFF"
+                }`
+              );
+            }
+          });
+
+          await powerChar.subscribeAsync();
+          console.log(
+            `🔔 Subscribed to power notifications for ${lamp.config.name}`
+          );
+        }
+      }
+
+      // Subscribe to brightness notifications
+      if (lamp.characteristics.brightness) {
+        const brightnessChar = lamp.characteristics.brightness;
+
+        if (brightnessChar.properties.includes("notify")) {
+          brightnessChar.on("data", (data: Buffer) => {
+            const oldBrightness = lamp.state.brightness;
+            lamp.state.brightness = data[0];
+            if (oldBrightness !== lamp.state.brightness) {
+              console.log(
+                `💡 ${lamp.config.name} brightness changed: ${lamp.state.brightness}`
+              );
+            }
+          });
+
+          await brightnessChar.subscribeAsync();
+          console.log(
+            `🔔 Subscribed to brightness notifications for ${lamp.config.name}`
+          );
+        }
+      }
+
+      // Subscribe to control characteristic notifications (combined state)
+      if (lamp.characteristics.control) {
+        const controlChar = lamp.characteristics.control;
+
+        if (controlChar.properties.includes("notify")) {
+          controlChar.on("data", (data: Buffer) => {
+            // Parse control characteristic data
+            // Format varies but typically includes power and brightness
+            if (data.length >= 1) {
+              console.log(
+                `💡 ${lamp.config.name} control notification: ${data.toString(
+                  "hex"
+                )}`
+              );
+              // Refresh full state on control changes
+              this.refreshLampState(lampId).catch(() => {});
+            }
+          });
+
+          await controlChar.subscribeAsync();
+          console.log(
+            `🔔 Subscribed to control notifications for ${lamp.config.name}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        `⚠️ Failed to subscribe to notifications for ${lamp.config.name}:`,
+        error
+      );
+      // Non-fatal error - polling will still work as fallback
+    }
+  }
+
+  /**
    * Read device info from lamp
    */
   private async readDeviceInfo(lampId: string): Promise<void> {
@@ -551,10 +850,19 @@ export class HueLampManager {
 
   /**
    * Refresh lamp state by reading characteristics
+   * @param skipConnectionCheck - Skip isConnected check (used during initial connection)
    */
-  async refreshLampState(lampId: string): Promise<HueLampState | null> {
+  async refreshLampState(
+    lampId: string,
+    skipConnectionCheck = false
+  ): Promise<HueLampState | null> {
     const lamp = this.lamps.get(lampId);
-    if (!lamp?.isConnected) {
+    if (!lamp) {
+      return null;
+    }
+
+    // During initial connection, we skip this check as isConnected is set after
+    if (!skipConnectionCheck && !lamp.isConnected) {
       return null;
     }
 
@@ -563,6 +871,11 @@ export class HueLampManager {
       if (lamp.characteristics.power) {
         const data = await lamp.characteristics.power.readAsync();
         lamp.state.isOn = data[0] === 0x01;
+        console.log(
+          `💡 ${lamp.config.name} power state: ${
+            lamp.state.isOn ? "ON" : "OFF"
+          }`
+        );
       }
 
       // Read brightness

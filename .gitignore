@@ -63,3 +63,4 @@ server
 device-cache.json
 users.json
 hue-lamps.json
+hue-lamps-blacklist.json

@@ -23,7 +23,14 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       .get(
         "/",
         () => {
-          const lamps = hueLampManager.getAllLamps().map((lamp) => ({
+          const allLamps = hueLampManager.getAllLamps();
+
+          // Filter out lamps that require pairing (not owned/authorized)
+          const accessibleLamps = allLamps.filter(
+            (lamp) => !lamp.pairingRequired
+          );
+
+          const lamps = accessibleLamps.map((lamp) => ({
             id: lamp.config.id,
             name: lamp.config.name,
             address: lamp.config.address,
@@ -440,5 +447,67 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
           body: HueLampRenameSchema,
         }
       )
+
+      // 🚫 Blacklist a lamp (remove and prevent re-discovery)
+      .post("/:lampId/blacklist", async ({ params, set }) => {
+        try {
+          const result = hueLampManager.blacklistLamp(params.lampId);
+
+          if (!result) {
+            set.status = 404;
+            return {
+              success: false,
+              error: "Lamp not found",
+            };
+          }
+
+          return {
+            success: true,
+            message: "Lamp blacklisted successfully",
+          };
+        } catch (error) {
+          set.status = 500;
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+        }
+      })
+
+      // 📋 Get blacklist
+      .get("/blacklist/list", () => {
+        const blacklist = hueLampManager.getBlacklist();
+        return {
+          success: true,
+          blacklist,
+          total: blacklist.length,
+        };
+      })
+
+      // ✅ Remove address from blacklist
+      .delete("/blacklist/:address", async ({ params, set }) => {
+        try {
+          const result = hueLampManager.unblacklistAddress(params.address);
+
+          if (!result) {
+            set.status = 404;
+            return {
+              success: false,
+              error: "Address not found in blacklist",
+            };
+          }
+
+          return {
+            success: true,
+            message: "Address removed from blacklist",
+          };
+        } catch (error) {
+          set.status = 500;
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+        }
+      })
   );
 }
