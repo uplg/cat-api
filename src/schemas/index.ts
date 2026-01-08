@@ -545,3 +545,87 @@ export const FountainPowerResponseSchema = t.Object({
   power: t.Optional(t.Boolean()),
   error: t.Optional(t.String()),
 });
+
+// 💡 Hue Lamp Schemas
+
+export const HueLampStateSchema = t.Object({
+  isOn: t.Boolean({
+    description: "Turn lamp on (true) or off (false)",
+  }),
+  brightness: t.Optional(
+    t.Number({
+      minimum: 1,
+      maximum: 100,
+      description: "Brightness percentage (1-100)",
+    })
+  ),
+});
+
+export const HueLampPowerSchema = t.Object({
+  enabled: t.Boolean({
+    description: "Turn lamp on (true) or off (false)",
+  }),
+});
+
+export const HueLampBrightnessSchema = t.Object({
+  brightness: t.Number({
+    minimum: 1,
+    maximum: 100,
+    description: "Brightness percentage (1-100)",
+    default: 100,
+  }),
+});
+
+export const HueLampRenameSchema = t.Object({
+  name: t.String({
+    minLength: 1,
+    maxLength: 32,
+    description: "New name for the lamp",
+  }),
+});
+
+const HueLampInfoSchema = t.Object({
+  id: t.String({ description: "Lamp unique ID" }),
+  name: t.String({ description: "Lamp name" }),
+  address: t.String({ description: "Bluetooth address" }),
+  model: t.Nullable(t.String({ description: "Lamp model" })),
+  manufacturer: t.String({ description: "Manufacturer name" }),
+  firmware: t.Nullable(t.String({ description: "Firmware version" })),
+  connected: t.Boolean({ description: "Connection status" }),
+  connecting: t.Boolean({ description: "Connecting in progress" }),
+  reachable: t.Boolean({ description: "Lamp is reachable" }),
+  state: t.Object({
+    isOn: t.Boolean({ description: "Power state" }),
+    brightness: t.Number({ description: "Brightness percentage (1-100)" }),
+    temperature: t.Nullable(t.Number({ description: "Color temperature" })),
+  }),
+  lastSeen: t.Nullable(t.String({ description: "Last seen timestamp" })),
+});
+
+export const HueLampsListResponseSchema = t.Object({
+  success: t.Boolean(),
+  lamps: t.Array(HueLampInfoSchema),
+  total: t.Number({ description: "Total number of lamps" }),
+  connected: t.Number({ description: "Number of connected lamps" }),
+  reachable: t.Number({ description: "Number of reachable lamps" }),
+  message: t.String(),
+});
+
+export const HueLampStatusResponseSchema = t.Object({
+  success: t.Boolean(),
+  lamp: t.Optional(HueLampInfoSchema),
+  message: t.Optional(t.String()),
+  error: t.Optional(t.String()),
+});
+
+export const HueLampResponseSchema = t.Object({
+  success: t.Boolean(),
+  state: t.Optional(
+    t.Object({
+      isOn: t.Boolean(),
+      brightness: t.Number(),
+    })
+  ),
+  message: t.Optional(t.String()),
+  error: t.Optional(t.String()),
+});

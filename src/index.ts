@@ -4,10 +4,12 @@ import { openapi } from "@elysiajs/openapi";
 import { jwt } from "@elysiajs/jwt";
 import dotenv from "dotenv";
 import { DeviceManager } from "./utils/DeviceManager";
+import { HueLampManager } from "./utils/HueLampManager";
 import { createDeviceRoutes } from "./routes/devices";
 import { createFeederRoutes } from "./routes/feeder";
 import { createLitterBoxRoutes } from "./routes/litter-box";
 import { createFountainRoutes } from "./routes/fountain";
+import { createHueLampRoutes } from "./routes/hue-lamps";
 import { createAuthRoutes } from "./routes/auth";
 
 dotenv.config();
@@ -28,6 +30,9 @@ process.on("unhandledRejection", (reason, promise) => {
 // 🔧 Device Manager Initialization
 const deviceManager = new DeviceManager();
 
+// 💡 Hue Lamp Manager Initialization
+const hueLampManager = new HueLampManager();
+
 // Initialize and connect all devices on startup
 (async () => {
   await deviceManager.initializeDevices();
@@ -36,12 +41,17 @@ const deviceManager = new DeviceManager();
   // Connect to all devices at startup
   console.log("🔗 Connecting to all devices on startup...");
   await deviceManager.connectAllDevices();
+
+  // Initialize Hue lamp manager
+  await hueLampManager.initialize();
+  console.log("💡 Hue Lamp manager initialized");
 })();
 
 // Handle graceful shutdown
-const gracefulShutdown = (signal: string) => {
+const gracefulShutdown = async (signal: string) => {
   console.log(`\n📴 Received ${signal}. Shutting down gracefully...`);
   deviceManager.disconnectAllDevices();
+  await hueLampManager.shutdown();
   process.exit(0);
 };
 
@@ -72,6 +82,10 @@ const app = new Elysia()
           { name: "feeder", description: "Smart feeder operations" },
           { name: "litter-box", description: "Smart litter box operations" },
           { name: "fountain", description: "Smart fountain operations" },
+          {
+            name: "hue-lamps",
+            description: "Philips Hue Bluetooth lamp operations",
+          },
         ],
         components: {
           securitySchemes: {
@@ -117,6 +131,18 @@ const app = new Elysia()
         "POST /devices/:deviceId/fountain/reset/pump",
         "POST /devices/:deviceId/fountain/uv",
         "POST /devices/:deviceId/fountain/eco-mode",
+        "GET /hue-lamps",
+        "POST /hue-lamps/scan",
+        "GET /hue-lamps/stats",
+        "POST /hue-lamps/connect",
+        "POST /hue-lamps/disconnect",
+        "GET /hue-lamps/:lampId",
+        "POST /hue-lamps/:lampId/connect",
+        "POST /hue-lamps/:lampId/disconnect",
+        "POST /hue-lamps/:lampId/power",
+        "POST /hue-lamps/:lampId/brightness",
+        "POST /hue-lamps/:lampId/state",
+        "POST /hue-lamps/:lampId/rename",
       ],
     };
   })
@@ -170,6 +196,7 @@ const app = new Elysia()
         .use(createFeederRoutes(deviceManager))
         .use(createLitterBoxRoutes(deviceManager))
         .use(createFountainRoutes(deviceManager))
+        .use(createHueLampRoutes(hueLampManager))
   );
 
 // 🚀 Server Configuration

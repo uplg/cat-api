@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { devicesApi, type Device } from '@/lib/api'
+import { devicesApi, hueLampsApi, type Device } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
+import { HueLampCard } from '@/components/devices/HueLampControl'
 import {
   Utensils,
   Droplets,
@@ -22,6 +23,8 @@ import {
   RefreshCw,
   Power,
   Loader2,
+  Lightbulb,
+  Search,
 } from 'lucide-react'
 
 const deviceIcons: Record<string, React.ReactNode> = {
@@ -181,6 +184,13 @@ export function DashboardPage() {
     refetchInterval: 10000, // Refresh every 10 seconds
   })
 
+  // Hue lamps query
+  const { data: hueLampsData, isLoading: isLoadingHueLamps } = useQuery({
+    queryKey: ['hue-lamps'],
+    queryFn: hueLampsApi.list,
+    refetchInterval: 5000, // Refresh every 5 seconds for lamps
+  })
+
   const connectAllMutation = useMutation({
     mutationFn: devicesApi.connectAll,
     onSuccess: () => {
@@ -212,6 +222,25 @@ export function DashboardPage() {
       toast({
         title: t('common.error'),
         description: error instanceof Error ? error.message : t('device.disconnectionFailed'),
+        variant: 'destructive',
+      })
+    },
+  })
+
+  // Hue lamps scan mutation
+  const scanHueLampsMutation = useMutation({
+    mutationFn: hueLampsApi.scan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hue-lamps'] })
+      toast({
+        title: t('hueLamps.scanStarted'),
+        description: t('hueLamps.scanStartedDescription'),
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('hueLamps.scanFailed'),
         variant: 'destructive',
       })
     },
@@ -312,6 +341,77 @@ export function DashboardPage() {
           {t('dashboard.deviceCount', { count: data.total })}
         </div>
       )}
+
+      {/* Hue Lamps Section */}
+      <div className="mt-8 space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-100 text-yellow-600">
+              <Lightbulb className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">{t('hueLamps.title')}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t('hueLamps.subtitle')}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => scanHueLampsMutation.mutate()}
+            disabled={scanHueLampsMutation.isPending}
+          >
+            {scanHueLampsMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-2 h-4 w-4" />
+            )}
+            {t('hueLamps.scan')}
+          </Button>
+        </div>
+
+        {isLoadingHueLamps ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <Skeleton className="h-40" />
+            <Skeleton className="h-40" />
+          </div>
+        ) : hueLampsData?.lamps && hueLampsData.lamps.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {hueLampsData.lamps.map((lamp) => (
+              <HueLampCard key={lamp.id} lamp={lamp} />
+            ))}
+          </div>
+        ) : (
+          <Card className="p-8 text-center">
+            <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+            <p className="mt-4 text-muted-foreground">{t('hueLamps.noLamps')}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t('hueLamps.noLampsHint')}
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => scanHueLampsMutation.mutate()}
+              disabled={scanHueLampsMutation.isPending}
+            >
+              {scanHueLampsMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="mr-2 h-4 w-4" />
+              )}
+              {t('hueLamps.scanForLamps')}
+            </Button>
+          </Card>
+        )}
+
+        {hueLampsData?.lamps && hueLampsData.lamps.length > 0 && (
+          <div className="text-center text-sm text-muted-foreground">
+            {t('hueLamps.lampCount', { count: hueLampsData.total })} • 
+            {t('hueLamps.connectedCount', { count: hueLampsData.connected })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

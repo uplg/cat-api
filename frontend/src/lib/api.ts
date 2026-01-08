@@ -255,3 +255,102 @@ export const litterBoxApi = {
       body: settings,
     }),
 };
+
+// Hue Lamp types
+export interface HueLampState {
+  isOn: boolean;
+  brightness: number;
+  temperature: number | null;
+}
+
+export interface HueLamp {
+  id: string;
+  name: string;
+  address: string;
+  model: string | null;
+  manufacturer: string;
+  firmware: string | null;
+  connected: boolean;
+  connecting: boolean;
+  reachable: boolean;
+  state: HueLampState;
+  lastSeen: string | null;
+}
+
+export interface HueLampsResponse {
+  success: boolean;
+  lamps: HueLamp[];
+  total: number;
+  connected: number;
+  reachable: number;
+  message: string;
+}
+
+export interface HueLampStatusResponse {
+  success: boolean;
+  lamp?: HueLamp;
+  message?: string;
+  error?: string;
+}
+
+export interface HueLampActionResponse {
+  success: boolean;
+  state?: {
+    isOn: boolean;
+    brightness: number;
+  };
+  message?: string;
+  error?: string;
+}
+
+// Hue Lamps API
+export const hueLampsApi = {
+  list: () => api<HueLampsResponse>("/hue-lamps"),
+
+  scan: () => api("/hue-lamps/scan", { method: "POST" }),
+
+  stats: () =>
+    api<{
+      success: boolean;
+      total: number;
+      connected: number;
+      reachable: number;
+    }>("/hue-lamps/stats"),
+
+  connectAll: () => api("/hue-lamps/connect", { method: "POST" }),
+
+  disconnectAll: () => api("/hue-lamps/disconnect", { method: "POST" }),
+
+  status: (lampId: string) =>
+    api<HueLampStatusResponse>(`/hue-lamps/${lampId}`),
+
+  connect: (lampId: string) =>
+    api(`/hue-lamps/${lampId}/connect`, { method: "POST" }),
+
+  disconnect: (lampId: string) =>
+    api(`/hue-lamps/${lampId}/disconnect`, { method: "POST" }),
+
+  power: (lampId: string, enabled: boolean) =>
+    api<HueLampActionResponse>(`/hue-lamps/${lampId}/power`, {
+      method: "POST",
+      body: { enabled },
+    }),
+
+  brightness: (lampId: string, brightness: number) =>
+    api<HueLampActionResponse>(`/hue-lamps/${lampId}/brightness`, {
+      method: "POST",
+      body: { brightness },
+    }),
+
+  state: (lampId: string, isOn: boolean, brightness?: number) =>
+    api<HueLampActionResponse>(`/hue-lamps/${lampId}/state`, {
+      method: "POST",
+      body: { isOn, brightness },
+    }),
+
+  rename: (lampId: string, name: string) =>
+    api(`/hue-lamps/${lampId}/rename`, {
+      method: "POST",
+      body: { name },
+    }),
+};
