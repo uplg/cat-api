@@ -19,7 +19,7 @@ export function Layout() {
         <div className="container flex h-14 items-center">
           <Link to="/" className="flex items-center gap-2 font-semibold">
             <Cat className="h-6 w-6 text-primary" />
-            <span className="hidden xs:inline">Cat Monitor</span>
+            <span className="hidden xs:inline">Home Monitor</span>
           </Link>
 
           <nav className="ml-6 hidden items-center gap-4 md:flex">
