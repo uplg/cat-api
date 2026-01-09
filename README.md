@@ -46,6 +46,15 @@ A full-stack application for monitoring and controlling Tuya-based smart cat dev
 - **Alert System**: Monitor low water and no water warnings
 - **Multi-Fountain Support**: Manage multiple fountains independently
 
+### 💡 Philips Hue Bluetooth Lamps
+
+- **Bluetooth Control**: Direct BLE connection to Philips Hue Bluetooth lamps (no bridge required)
+- **Power & Brightness**: Turn lamps on/off and adjust brightness
+- **Auto-discovery**: Automatic scanning and pairing of nearby lamps
+- **Blacklist**: Hide neighbor's lamps from appearing in your dashboard
+
+> **Note**: Hue Bluetooth requires running the backend locally (not in Docker). See [Hybrid Mode](#-hybrid-mode-with-bluetooth) below.
+
 ### 🔍 Advanced Diagnostics
 
 - **DPS Scanning**: Discover available device data points with configurable ranges and timeouts
@@ -177,73 +186,53 @@ A full-stack application for monitoring and controlling Tuya-based smart cat dev
 
 ---
 
-## 🐳 Production Deployment (Docker)
+## 🐳 Deployment
 
-The recommended way to deploy Cat Monitor in production is using Docker Compose.
+### Docker Mode (without Bluetooth)
 
-### Quick Start
+Run everything in Docker. Hue Bluetooth lamps are disabled in this mode.
 
 ```bash
-# Build and start all services
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f
-
-# Stop all services
-docker-compose down
+docker-compose up -d --build   # Start
+docker-compose down            # Stop
 ```
 
-The application will be available at `http://localhost` (port 80).
-If no users.json defined (rename/modify users.json.template), user: admin, password: admin will be used.
+The app is available at `http://localhost` (port 80).
 
-### Architecture
+### 📶 Hybrid Mode (with Bluetooth)
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Docker Network                      │
-│                                                         │
-│   ┌──────────────┐          ┌──────────────────────┐    │
-│   │   Frontend   │   /api   │       Backend        │    │
-│   │    (nginx)   │ ──────▶  │      (Elysia)        │    │
-│   │    :80       │          │       :3000          │    │
-│   └──────────────┘          └──────────────────────┘    │
-│          │                            │                 │
-└──────────┼────────────────────────────┼─────────────────┘
-           │                            │
-           ▼                            ▼
-      Web Browser               Tuya IoT Devices
+To use Philips Hue Bluetooth lamps, run the backend locally (for Bluetooth access) and only the frontend in Docker.
+
+```bash
+make hybrid   # Starts local backend + Docker frontend
 ```
 
-### Services
+| Mode | Tuya Devices | Hue Lamps | Command |
+|------|--------------|-----------|---------|
+| Docker | ✅ | ❌ | `docker-compose up -d` |
+| Hybrid | ✅ | ✅ | `make hybrid` |
+| Local dev | ✅ | ✅ | `bun run dev` |
 
-| Service    | Description                          | Port |
-| ---------- | ------------------------------------ | ---- |
-| `frontend` | React app served via nginx           | 80   |
-| `backend`  | Elysia API server (internal network) | 3000 |
+### Makefile Commands
+
+```bash
+make help           # Show all commands
+make hybrid         # Start hybrid mode
+make backend-local  # Start backend only (background)
+make backend-stop   # Stop local backend
+make docker-up      # Start Docker mode
+make docker-down    # Stop Docker
+make clean          # Stop everything
+```
 
 ### Configuration
 
-The `docker-compose.yml` mounts configuration files from the host:
-
+- Set `API_PORT` in `.env` to change the backend port (default: 3033)
 - `devices.json` - Device configurations
-- `device-cache.json` - Cached DPS (some devices only report changes but don't expose DPS directly, so we need to cache on data event/update)
-- `users.json` - Users "DB"
-- `.env` - Environment variables
-
-### Build Backend Only
-
-If you only need the API server:
-
-```bash
-docker build -t cat-monitor-api .
-docker run -p 3000:3000 \
-  -v $(pwd)/devices.json:/app/devices.json \
-  -v $(pwd)/device-cache.json:/app/device-cache.json \
-  -v $(pwd)/users.json:/app/users.json \
-  --env-file .env \
-  cat-monitor-api
-```
+- `devices-cache.json` - Cache for DPS that are not readable (only usable after a modification / event received)
+- `users.json` - Users credentials (copy from `users.json.template`)
+- `hue-lamps.json` - Hue lamps identifier if connected
+- `hue-lamps-blacklist.json` - Blacklist to handle Hue lamps that don't belong to you (not connected once)
 
 ---
 
