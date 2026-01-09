@@ -59,7 +59,7 @@ Concept: A custom "home assistant" without the overhead.
 - **Auto-discovery**: Automatic scanning and pairing of nearby lamps
 - **Blacklist**: Hide neighbor's lamps from appearing in your dashboard
 
-> **Note**: Hue Bluetooth requires running the backend locally (not in Docker). See [Hybrid Mode](#-hybrid-mode-with-bluetooth) below.
+> **Note**: Hue Bluetooth requires running the backend locally (not in Docker). See [Hybrid Mode](#hybrid-mode-with-bluetooth) below.
 
 ### Advanced Diagnostics
 
