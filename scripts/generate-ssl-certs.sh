@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🔐 GGenerating SSL certificates for Home Monitor${NC}"
+echo -e "${GREEN}🔐 Generating SSL certificates for Home Monitor${NC}"
 echo ""
 
 # Check if mkcert is installed
