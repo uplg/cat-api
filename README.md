@@ -186,9 +186,9 @@ Concept: A custom "home assistant" without the overhead.
    bun run dev:frontend
    ```
 
-   - **Backend API**: `http://localhost:3000`
+   - **Backend API**: `http://localhost:3033`
    - **Frontend**: `http://localhost:5173`
-   - **OpenAPI Docs**: `http://localhost:3000/openapi`
+   - **OpenAPI Docs**: `http://localhost:3033/openapi`
 
 ---
 
