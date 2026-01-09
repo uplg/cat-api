@@ -1,18 +1,20 @@
-# 🐱 Home Monitor
+# Home Monitor
 
 A full-stack application for monitoring and controlling Tuya-based smart cat devices locally. 
+
 Built with **Elysia** (backend) and **React** (frontend), it provides comprehensive device management for smart feeders, fountains, and automatic litter boxes.
+
 Also handles Hue lamps using BLE.
 
 Concept: A custom "home assistant" without the overhead.
 
-![Cat Monitor](https://img.shields.io/badge/Made%20with-Bun-f472b6?style=flat-square)
+![Home Monitor](https://img.shields.io/badge/Made%20with-Bun-f472b6?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square)
 
-## 🚀 Features
+## Features
 
-### 🖥️ Modern Web Interface
+### Modern Web Interface
 
 - **Dashboard**: Real-time overview of all connected devices
 - **Device Control**: Intuitive controls for each device type
@@ -20,27 +22,27 @@ Concept: A custom "home assistant" without the overhead.
 - **Multi-language**: Support for English and French (i18n)
 - **Responsive Design**: Works on desktop and mobile
 
-### 📱 Multi-Device Management
+### Multi-Device Management
 
 - **Device Status**: Real-time status monitoring for all connected devices
 - **Connection Management**: Connect/disconnect all devices or individual devices
 - **Device Types**: Support for feeders, fountains and litter boxes with type-specific endpoints
 
-### 🍽️ Smart Feeder Control
+### Smart Feeder Control
 
 - **Meal Plan Management**: Create, read, and update feeding schedules with Base64 encoding/decoding and caching
 - **Manual Feeding**: Trigger immediate feeding sessions with customizable portions
 - **Feeder status**: Retrieve detailed feeding logs with parsed timestamps and portion tracking
 - **Multi-Feeder Support**: Manage multiple feeders independently
 
-### 🚽 Litter Box Monitoring
+### Litter Box Monitoring
 
 - **Comprehensive Status**: Monitor litter level, cleaning cycles, sensor data, and system state
 - **Smart Controls**: Trigger cleaning cycles, configure sleep modes, and adjust settings
 - **Sensor Analytics**: Track defecation frequency, duration, and maintenance alerts
 - **Preference Management**: Control lighting, sounds, child lock, and kitten mode
 
-### 💧 Smart Fountain Control
+### Smart Fountain Control
 
 - **Real-time Monitoring**: Track water level, filter life, pump runtime, and UV operation
 - **Light Control**: Turn the fountain light on/off remotely
@@ -50,7 +52,7 @@ Concept: A custom "home assistant" without the overhead.
 - **Alert System**: Monitor low water and no water warnings
 - **Multi-Fountain Support**: Manage multiple fountains independently
 
-### 💡 Philips Hue Bluetooth Lamps
+### Philips Hue Bluetooth Lamps
 
 - **Bluetooth Control**: Direct BLE connection to Philips Hue Bluetooth lamps (no bridge required)
 - **Power & Brightness**: Turn lamps on/off and adjust brightness
@@ -59,20 +61,20 @@ Concept: A custom "home assistant" without the overhead.
 
 > **Note**: Hue Bluetooth requires running the backend locally (not in Docker). See [Hybrid Mode](#-hybrid-mode-with-bluetooth) below.
 
-### 🔍 Advanced Diagnostics
+### Advanced Diagnostics
 
 - **DPS Scanning**: Discover available device data points with configurable ranges and timeouts
 - **Real-time Monitoring**: Live device data updates and event tracking
 - **Device Analytics**: Comprehensive device information and capability discovery
 
-## 📋 Prerequisites
+## Prerequisites
 
 - [Bun](https://bun.sh) (latest version)
 - [Docker](https://docker.com) & Docker Compose (for production deployment)
 - One or more Tuya-compatible smart cat devices (feeders, fountains, litter boxes) and/or Hue lamps.
 - Device credentials (ID, Key, IP) for each device
 
-## 🛠️ Installation
+## Installation
 
 ### Development Setup
 
@@ -91,8 +93,8 @@ Concept: A custom "home assistant" without the overhead.
 2. **Clone the repository**
 
    ```bash
-   git clone https://github.com/uplg/cat-monitor.git
-   cd cat-monitor
+   git clone https://github.com/uplg/home-monitor.git
+   cd home-monitor
    ```
 
 3. **Install dependencies**
@@ -161,7 +163,7 @@ Concept: A custom "home assistant" without the overhead.
 
    ```env
    # API Server port
-   PORT=3000
+   PORT=3033
 
    # JWT Secret for authentication (generate a secure random string using `openssl rand -hex 16`)
    JWT_SECRET=your-super-secret-jwt-key-change-me
@@ -177,7 +179,7 @@ Concept: A custom "home assistant" without the overhead.
    Or start them separately:
 
    ```bash
-   # Backend only (port 3000)
+   # Backend only (port 3033)
    bun run dev:backend
 
    # Frontend only (port 5173)
@@ -190,7 +192,7 @@ Concept: A custom "home assistant" without the overhead.
 
 ---
 
-## 🐳 Deployment
+## Deployment
 
 ### Docker Mode (without Bluetooth)
 
@@ -203,7 +205,7 @@ docker-compose down            # Stop
 
 The app is available at `http://localhost` (port 80).
 
-### 📶 Hybrid Mode (with Bluetooth)
+### Hybrid Mode (with Bluetooth)
 
 To use Philips Hue Bluetooth lamps, run the backend locally (for Bluetooth access) and only the frontend in Docker.
 
@@ -240,13 +242,13 @@ make clean          # Stop everything
 
 ---
 
-## 📚 API Documentation
+## API Documentation
 
 ### OpenAPI
 
-Interactive API documentation is available at `http://localhost:3000/openapi`
+Interactive API documentation is available at `http://localhost:3033/openapi`
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -280,14 +282,14 @@ The API includes comprehensive logging. Check the console output for:
 - Meal plan encoding/decoding details
 - Real-time event reports
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 
 ```
 | Layer    | Technology                              |
 | -------- | --------------------------------------- |
-| Backend  | Elysia, Bun, TuyAPI                     |
+| Backend  | Elysia, Bun, TuyAPI, @stoprocent/noble  |
 | Frontend | React 19, Vite, TailwindCSS, TypeScript |
 | UI       | Radix UI, Lucide Icons                  |
 | State    | TanStack Query (React Query)            |
@@ -304,11 +306,11 @@ The API includes comprehensive logging. Check the console output for:
 - **Real-time**: Event-driven architecture with persistent connections
 - **Authentication**: JWT-based auth with protected routes
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -316,14 +318,14 @@ MIT License - see LICENSE file for details
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📞 Support
+## Support
 
 For issues and questions:
 
 - Check the troubleshooting section
 - Leave an issue (try to add as much details as possible)
 
-## 🌐 Internationalization
+## Internationalization
 
 The frontend supports multiple languages:
 
@@ -341,4 +343,4 @@ To add a new language, create a new JSON file in `frontend/src/i18n/locales/` an
 
 ---
 
-**Happy monitoring! 🐱🍽️💧🚽**
+**Happy monitoring! 🐱🍽️💧🚽 🛋️**
