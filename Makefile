@@ -109,3 +109,53 @@ status: ## Show status of services
 	@echo ""
 	@echo "$(GREEN)=== Docker ===$(RESET)"
 	@docker-compose ps 2>/dev/null || echo "Docker not available"
+
+# =====================
+# PWA & SSL (for mobile app access)
+# =====================
+
+ssl-certs: ## Generate SSL certificates with mkcert
+	@echo "$(GREEN)Generating SSL certificates...$(RESET)"
+	@chmod +x scripts/generate-ssl-certs.sh
+	@./scripts/generate-ssl-certs.sh
+
+ssl-icons: ## Generate PWA icons from cat.svg
+	@echo "$(GREEN)Generating PWA icons...$(RESET)"
+	@chmod +x scripts/generate-icons.sh
+	@./scripts/generate-icons.sh
+
+ssl-setup: ssl-certs ssl-icons ## Full PWA/SSL setup (certs + icons)
+	@echo "$(GREEN)PWA setup complete!$(RESET)"
+
+ssl-up: ## Start with SSL (for PWA/mobile access)
+	@echo "$(GREEN)Starting with SSL...$(RESET)"
+	@if [ ! -f scripts/ssl/cert.pem ]; then \
+		echo "$(YELLOW)SSL certificates not found. Generating...$(RESET)"; \
+		$(MAKE) ssl-certs; \
+	fi
+	docker-compose -f docker-compose.ssl.yml up -d --build
+	@echo ""
+	@echo "$(GREEN)✅ Home Monitor with SSL started!$(RESET)"
+	@echo "  - HTTP:  http://localhost (redirects to HTTPS)"
+	@echo "  - HTTPS: https://localhost"
+	@echo "  - HTTPS: https://home-monitor.local (add to /etc/hosts)"
+
+ssl-down: ## Stop SSL containers
+	docker-compose -f docker-compose.ssl.yml down
+
+ssl-logs: ## Tail SSL Docker logs
+	docker-compose -f docker-compose.ssl.yml logs -f
+
+hybrid-ssl: backend-local docker-frontend-hybrid-ssl ## Hybrid mode with SSL (Bluetooth + PWA)
+	@echo "$(GREEN)Hybrid SSL mode started:$(RESET)"
+	@echo "  - Backend: localhost:$(API_PORT) (with Bluetooth)"
+	@echo "  - Frontend: https://localhost (Docker with SSL)"
+
+docker-frontend-hybrid-ssl: ## Start frontend with SSL in Docker (hybrid mode)
+	@echo "$(GREEN)Starting frontend with SSL (hybrid mode)...$(RESET)"
+	@if [ ! -f scripts/ssl/cert.pem ]; then \
+		echo "$(YELLOW)SSL certificates not found. Generating...$(RESET)"; \
+		$(MAKE) ssl-certs; \
+	fi
+	docker-compose -f docker-compose.hybrid.ssl.yml up -d --build
+

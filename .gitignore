@@ -68,3 +68,5 @@ hue-lamps-blacklist.json
 # Backend local run
 .backend.pid
 logs/
+
+scripts/ssl/*

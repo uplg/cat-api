@@ -1,5 +1,5 @@
 {
-  "name": "cat-monitor",
+  "name": "home-monitor",
   "version": "1.0.0",
   "private": true,
   "description": "Control your Tuya-based cat (IoT) devices locally using an API",

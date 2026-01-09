@@ -1,3 +1,6 @@
+# Docker Compose avec SSL pour accès PWA
+# Utilise les certificats générés par mkcert
+
 services:
   backend:
     build:
@@ -26,13 +29,17 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.ssl
     container_name: home-monitor-frontend
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     environment:
       - BACKEND_URL=backend:${API_PORT:-3033}
+    volumes:
+      # Monte les certificats SSL
+      - ./scripts/ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
     networks:

@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "cat-api",
+      "name": "home-monitor",
       "dependencies": {
         "@elysiajs/cors": "^1.4.0",
         "@elysiajs/jwt": "^1.4.0",
