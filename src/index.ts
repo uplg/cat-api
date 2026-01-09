@@ -4,7 +4,7 @@ import { openapi } from "@elysiajs/openapi";
 import { jwt } from "@elysiajs/jwt";
 import dotenv from "dotenv";
 import { DeviceManager } from "./utils/DeviceManager";
-import { HueLampManager } from "./utils/HueLampManager";
+import type { IHueLampManager } from "./utils/HueLampManagerInterface";
 import { createDeviceRoutes } from "./routes/devices";
 import { createFeederRoutes } from "./routes/feeder";
 import { createLitterBoxRoutes } from "./routes/litter-box";
@@ -15,6 +15,21 @@ import { createAuthRoutes } from "./routes/auth";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-cat-key-change-me";
+const DISABLE_BLUETOOTH = process.env.DISABLE_BLUETOOTH === "true";
+
+// Dynamic import for HueLampManager (real or stub based on environment)
+// Use dynamic path to prevent bundler from resolving the real module in Docker
+const createHueLampManager = async (): Promise<IHueLampManager> => {
+  if (DISABLE_BLUETOOTH) {
+    const { HueLampManager } = await import("./utils/HueLampManagerStub");
+    return new HueLampManager();
+  } else {
+    // Use dynamic string to prevent static analysis by bundler
+    const modulePath = [".", "utils", "HueLampManager"].join("/");
+    const { HueLampManager } = await import(modulePath);
+    return new HueLampManager();
+  }
+};
 
 // Handle uncaught errors to prevent API crashes from socket issues
 process.on("uncaughtException", (error) => {
@@ -30,8 +45,8 @@ process.on("unhandledRejection", (reason, promise) => {
 // 🔧 Device Manager Initialization
 const deviceManager = new DeviceManager();
 
-// 💡 Hue Lamp Manager Initialization
-const hueLampManager = new HueLampManager();
+// 💡 Hue Lamp Manager - will be initialized async
+let hueLampManager: IHueLampManager;
 
 // Initialize and connect all devices on startup
 (async () => {
@@ -42,9 +57,13 @@ const hueLampManager = new HueLampManager();
   console.log("🔗 Connecting to all devices on startup...");
   await deviceManager.connectAllDevices();
 
-  // Initialize Hue lamp manager
+  // Initialize Hue lamp manager (real or stub)
+  hueLampManager = await createHueLampManager();
   await hueLampManager.initialize();
   console.log("💡 Hue Lamp manager initialized");
+
+  // Start the server after all initialization
+  startServer();
 })();
 
 // Handle graceful shutdown
@@ -196,14 +215,15 @@ const app = new Elysia()
         .use(createFeederRoutes(deviceManager))
         .use(createLitterBoxRoutes(deviceManager))
         .use(createFountainRoutes(deviceManager))
-        .use(createHueLampRoutes(hueLampManager))
+        .use(createHueLampRoutes(() => hueLampManager))
   );
 
 // 🚀 Server Configuration
-const port = Number(process.env.PORT || 3000);
-
-app.listen(port, () => {
-  console.log(`🚀 Server started on http://localhost:${port}`);
-});
+const port = Number(process.env.PORT || process.env.API_PORT || 3033);
+function startServer() {
+  app.listen(port, () => {
+    console.log(`🚀 Server started on http://localhost:${port}`);
+  });
+}
 
 export { app };

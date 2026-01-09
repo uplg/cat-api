@@ -191,6 +191,16 @@ export function DashboardPage() {
     refetchInterval: 5000, // Refresh every 5 seconds for lamps
   })
 
+  // Hue lamps stats (to check if disabled)
+  const { data: hueLampsStats } = useQuery({
+    queryKey: ['hue-lamps-stats'],
+    queryFn: hueLampsApi.stats,
+    staleTime: 60000, // Cache for 1 minute
+  })
+
+  // Check if Hue lamps are disabled (Docker mode)
+  const isHueDisabled = hueLampsStats?.disabled === true
+
   const connectAllMutation = useMutation({
     mutationFn: devicesApi.connectAll,
     onSuccess: () => {
@@ -342,7 +352,8 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Hue Lamps Section */}
+      {/* Hue Lamps Section - Hidden in Docker mode */}
+      {!isHueDisabled && (
       <div className="mt-8 space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -412,6 +423,7 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

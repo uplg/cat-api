@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { HueLampManager } from "../utils/HueLampManager";
+import type { IHueLampManager } from "../utils/HueLampManagerInterface";
 import { parseBrightness } from "../utils/HueLamp";
 import {
   HueLampsListResponseSchema,
@@ -15,14 +15,18 @@ import {
  * Hue Lamp routes
  * Handles Philips Hue Bluetooth lamp discovery, connection, and control
  */
-export function createHueLampRoutes(hueLampManager: HueLampManager) {
+export function createHueLampRoutes(getHueLampManager: () => IHueLampManager) {
   return (
     new Elysia({ prefix: "/hue-lamps", tags: ["hue-lamps"] })
+      // Inject hueLampManager into context for all routes
+      .derive(() => ({
+        hueLampManager: getHueLampManager(),
+      }))
 
       // 💡 List all Hue lamps
       .get(
         "/",
-        () => {
+        ({ hueLampManager }) => {
           const allLamps = hueLampManager.getAllLamps();
 
           // Filter out lamps that require pairing (not owned/authorized)
@@ -65,7 +69,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       )
 
       // 🔍 Trigger a BLE scan for lamps
-      .post("/scan", async ({ set }) => {
+      .post("/scan", async ({ set, hueLampManager }) => {
         try {
           await hueLampManager.triggerScan();
           return {
@@ -82,7 +86,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       })
 
       // 📊 Get connection statistics
-      .get("/stats", () => {
+      .get("/stats", ({ hueLampManager }) => {
         const stats = hueLampManager.getConnectionStats();
         return {
           success: true,
@@ -91,7 +95,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       })
 
       // 🔗 Connect all lamps
-      .post("/connect", async ({ set }) => {
+      .post("/connect", async ({ set, hueLampManager }) => {
         try {
           await hueLampManager.connectAllLamps();
           return {
@@ -108,7 +112,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       })
 
       // 📴 Disconnect all lamps
-      .post("/disconnect", async ({ set }) => {
+      .post("/disconnect", async ({ set, hueLampManager }) => {
         try {
           await hueLampManager.disconnectAllLamps();
           return {
@@ -127,7 +131,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       // 💡 Get specific lamp status
       .get(
         "/:lampId",
-        async ({ params, set }) => {
+        async ({ params, set, hueLampManager }) => {
           const lamp = hueLampManager.getLamp(params.lampId);
 
           if (!lamp) {
@@ -171,7 +175,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       )
 
       // 🔗 Connect specific lamp
-      .post("/:lampId/connect", async ({ params, set }) => {
+      .post("/:lampId/connect", async ({ params, set, hueLampManager }) => {
         const lamp = hueLampManager.getLamp(params.lampId);
 
         if (!lamp) {
@@ -201,7 +205,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       })
 
       // 📴 Disconnect specific lamp
-      .post("/:lampId/disconnect", async ({ params, set }) => {
+      .post("/:lampId/disconnect", async ({ params, set, hueLampManager }) => {
         const lamp = hueLampManager.getLamp(params.lampId);
 
         if (!lamp) {
@@ -230,7 +234,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       // ⚡ Set lamp power (on/off)
       .post(
         "/:lampId/power",
-        async ({ params, body, set }) => {
+        async ({ params, body, set, hueLampManager }) => {
           const lamp = hueLampManager.getLamp(params.lampId);
 
           if (!lamp) {
@@ -288,7 +292,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       // 🔆 Set lamp brightness
       .post(
         "/:lampId/brightness",
-        async ({ params, body, set }) => {
+        async ({ params, body, set, hueLampManager }) => {
           const lamp = hueLampManager.getLamp(params.lampId);
 
           if (!lamp) {
@@ -346,7 +350,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       // 🎚️ Set lamp state (power + brightness together)
       .post(
         "/:lampId/state",
-        async ({ params, body, set }) => {
+        async ({ params, body, set, hueLampManager }) => {
           const lamp = hueLampManager.getLamp(params.lampId);
 
           if (!lamp) {
@@ -406,7 +410,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       // ✏️ Rename a lamp
       .post(
         "/:lampId/rename",
-        async ({ params, body, set }) => {
+        async ({ params, body, set, hueLampManager }) => {
           const lamp = hueLampManager.getLamp(params.lampId);
 
           if (!lamp) {
@@ -449,7 +453,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       )
 
       // 🚫 Blacklist a lamp (remove and prevent re-discovery)
-      .post("/:lampId/blacklist", async ({ params, set }) => {
+      .post("/:lampId/blacklist", async ({ params, set, hueLampManager }) => {
         try {
           const result = hueLampManager.blacklistLamp(params.lampId);
 
@@ -475,7 +479,7 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       })
 
       // 📋 Get blacklist
-      .get("/blacklist/list", () => {
+      .get("/blacklist/list", ({ hueLampManager }) => {
         const blacklist = hueLampManager.getBlacklist();
         return {
           success: true,
@@ -485,29 +489,32 @@ export function createHueLampRoutes(hueLampManager: HueLampManager) {
       })
 
       // ✅ Remove address from blacklist
-      .delete("/blacklist/:address", async ({ params, set }) => {
-        try {
-          const result = hueLampManager.unblacklistAddress(params.address);
+      .delete(
+        "/blacklist/:address",
+        async ({ params, set, hueLampManager }) => {
+          try {
+            const result = hueLampManager.unblacklistAddress(params.address);
 
-          if (!result) {
-            set.status = 404;
+            if (!result) {
+              set.status = 404;
+              return {
+                success: false,
+                error: "Address not found in blacklist",
+              };
+            }
+
+            return {
+              success: true,
+              message: "Address removed from blacklist",
+            };
+          } catch (error) {
+            set.status = 500;
             return {
               success: false,
-              error: "Address not found in blacklist",
+              error: error instanceof Error ? error.message : "Unknown error",
             };
           }
-
-          return {
-            success: true,
-            message: "Address removed from blacklist",
-          };
-        } catch (error) {
-          set.status = 500;
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
         }
-      })
+      )
   );
 }

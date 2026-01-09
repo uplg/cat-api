@@ -11,9 +11,16 @@ RUN bun run build
 
 FROM nginx:alpine
 
+# Install envsubst for template processing
+RUN apk add --no-cache gettext
+
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
+# Default backend URL (Docker network) - will be overridden by docker-compose
+ENV BACKEND_URL=backend:3033
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use envsubst to process the template and start nginx
+CMD ["/bin/sh", "-c", "envsubst '${BACKEND_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

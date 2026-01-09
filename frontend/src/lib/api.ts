@@ -315,6 +315,8 @@ export const hueLampsApi = {
       total: number;
       connected: number;
       reachable: number;
+      disabled?: boolean;
+      message?: string;
     }>("/hue-lamps/stats"),
 
   connectAll: () => api("/hue-lamps/connect", { method: "POST" }),
