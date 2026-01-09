@@ -47,6 +47,8 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
   const [localBrightness, setLocalBrightness] = useState<number[]>([lamp?.state.brightness ?? 100])
   // Target brightness - we ignore server updates until server reaches this value
   const targetBrightnessRef = useRef<number | null>(null)
+  // Cooldown after power toggle to ignore brightness updates
+  const powerCooldownRef = useRef<number>(0)
 
   const powerMutation = useMutation({
     mutationFn: (enabled: boolean) => hueLampsApi.power(lampId, enabled),
@@ -85,8 +87,13 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
   })
 
   // Optimistic sync: ignore server values until they match our target (±2% tolerance)
+  // Also ignore during power toggle cooldown to avoid flicker
   useEffect(() => {
     if (lamp?.state.brightness === undefined) return
+    
+    // Ignore during power toggle cooldown (1 second after toggle)
+    const now = Date.now()
+    if (now - powerCooldownRef.current < 1000) return
     
     const serverValue = lamp.state.brightness
     const target = targetBrightnessRef.current
@@ -115,6 +122,7 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
   }
 
   const handlePowerToggle = (checked: boolean) => {
+    powerCooldownRef.current = Date.now()
     powerMutation.mutate(checked)
   }
 
@@ -336,9 +344,15 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
 
   const [localBrightness, setLocalBrightness] = useState([lamp.state.brightness])
   const targetBrightnessRef = useRef<number | null>(null)
+  const powerCooldownRef = useRef<number>(0)
 
   // Optimistic sync: ignore server values until they match our target (±2% tolerance)
+  // Also ignore during power toggle cooldown to avoid flicker
   useEffect(() => {
+    // Ignore during power toggle cooldown (1 second after toggle)
+    const now = Date.now()
+    if (now - powerCooldownRef.current < 1000) return
+    
     const serverValue = lamp.state.brightness
     const target = targetBrightnessRef.current
     
@@ -392,7 +406,10 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
           </div>
           <Switch
             checked={isOn}
-            onCheckedChange={(checked) => powerMutation.mutate(checked)}
+            onCheckedChange={(checked) => {
+              powerCooldownRef.current = Date.now()
+              powerMutation.mutate(checked)
+            }}
             disabled={!isConnected || powerMutation.isPending}
           />
         </div>
