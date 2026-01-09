@@ -271,13 +271,13 @@ export class HueLampManager {
     const address = peripheral.address || peripheral.id;
 
     // Debug: log all discovered devices with names (uncomment for debugging)
-    if (localName) {
-      console.log(
-        `🔎 BLE device: ${localName} (${address}) services: ${
-          serviceUuids.join(", ") || "none"
-        }`
-      );
-    }
+    // if (localName) {
+    //   console.log(
+    //     `🔎 BLE device: ${localName} (${address}) services: ${
+    //       serviceUuids.join(", ") || "none"
+    //     }`
+    //   );
+    // }
 
     // Check if this looks like a Hue lamp
     if (!isHueLamp(localName, manufacturerData, serviceUuids)) {

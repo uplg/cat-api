@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { hueLampsApi, type HueLamp } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,24 +34,19 @@ interface HueLampControlProps {
 export function HueLampControl({ lampId }: HueLampControlProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [brightness, setBrightness] = useState<number[]>([100])
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [pendingBrightness, setPendingBrightness] = useState<number | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['hue-lamp', lampId],
     queryFn: () => hueLampsApi.status(lampId),
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   })
 
   const lamp = data?.lamp
 
-  // Sync local brightness with server state
-  useEffect(() => {
-    if (lamp?.state.brightness && !isUpdating) {
-      setBrightness([lamp.state.brightness])
-    }
-  }, [lamp?.state.brightness, isUpdating])
+  // Local brightness state with optimistic updates
+  const [localBrightness, setLocalBrightness] = useState<number[]>([lamp?.state.brightness ?? 100])
+  // Target brightness - we ignore server updates until server reaches this value
+  const targetBrightnessRef = useRef<number | null>(null)
 
   const powerMutation = useMutation({
     mutationFn: (enabled: boolean) => hueLampsApi.power(lampId, enabled),
@@ -76,12 +72,10 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hue-lamp', lampId] })
       queryClient.invalidateQueries({ queryKey: ['hue-lamps'] })
-      setIsUpdating(false)
-      setPendingBrightness(null)
     },
     onError: (error) => {
-      setIsUpdating(false)
-      setPendingBrightness(null)
+      // Reset target on error so we can resync
+      targetBrightnessRef.current = null
       toast({
         title: t('common.error'),
         description: error instanceof Error ? error.message : t('hueLamps.brightnessFailed'),
@@ -90,60 +84,39 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
     },
   })
 
-  // Combined state mutation for future use
-  const _stateMutation = useMutation({
-    mutationFn: ({ isOn, brightness }: { isOn: boolean; brightness?: number }) =>
-      hueLampsApi.state(lampId, isOn, brightness),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hue-lamp', lampId] })
-      queryClient.invalidateQueries({ queryKey: ['hue-lamps'] })
-      setIsUpdating(false)
-    },
-    onError: (error) => {
-      setIsUpdating(false)
-      toast({
-        title: t('common.error'),
-        description: error instanceof Error ? error.message : t('hueLamps.stateFailed'),
-        variant: 'destructive',
-      })
-    },
-  })
-  void _stateMutation; // Suppress unused warning - available for future combined state updates
-
-  // Debounced brightness update
-  const debouncedBrightnessUpdate = useCallback((value: number) => {
-    setIsUpdating(true)
-    setPendingBrightness(value)
+  // Optimistic sync: ignore server values until they match our target (±2% tolerance)
+  useEffect(() => {
+    if (lamp?.state.brightness === undefined) return
     
-    // Clear any existing timeout
-    const timeoutId = setTimeout(() => {
-      brightnessMutation.mutate(value)
-    }, 300)
-
-    return () => clearTimeout(timeoutId)
-  }, [brightnessMutation])
-
-  const handleBrightnessChange = (value: number[]) => {
-    setBrightness(value)
-  }
+    const serverValue = lamp.state.brightness
+    const target = targetBrightnessRef.current
+    
+    // If we have a target, only sync when server reaches it
+    if (target !== null) {
+      const isClose = Math.abs(serverValue - target) <= 2
+      if (isClose) {
+        // Server reached target, clear it and sync
+        targetBrightnessRef.current = null
+        setLocalBrightness([serverValue])
+      }
+      // Otherwise ignore intermediate values
+    } else {
+      // No target, sync normally
+      setLocalBrightness([serverValue])
+    }
+  }, [lamp?.state.brightness])
 
   const handleBrightnessCommit = (value: number[]) => {
-    if (value[0] !== lamp?.state.brightness) {
-      debouncedBrightnessUpdate(value[0])
-    }
+    const newValue = value[0]
+    // Set target for optimistic update
+    targetBrightnessRef.current = newValue
+    setLocalBrightness([newValue])
+    brightnessMutation.mutate(newValue)
   }
 
   const handlePowerToggle = (checked: boolean) => {
     powerMutation.mutate(checked)
   }
-
-  // Quick brightness presets
-  const brightnessPresets = [
-    { value: 25, icon: Moon, label: '25%' },
-    { value: 50, icon: Sun, label: '50%' },
-    { value: 75, icon: Sun, label: '75%' },
-    { value: 100, icon: Sun, label: '100%' },
-  ]
 
   if (isLoading) {
     return (
@@ -242,12 +215,12 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
             <div className="flex items-center justify-between">
               <Label>{t('hueLamps.currentBrightness')}</Label>
               <span className="text-2xl font-bold">
-                {pendingBrightness ?? brightness[0]}%
+                {localBrightness[0]}%
               </span>
             </div>
             <Slider
-              value={brightness}
-              onValueChange={handleBrightnessChange}
+              value={localBrightness}
+              onValueChange={setLocalBrightness}
               onValueCommit={handleBrightnessCommit}
               min={1}
               max={100}
@@ -259,29 +232,6 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
               <span>1%</span>
               <span>50%</span>
               <span>100%</span>
-            </div>
-          </div>
-
-          {/* Quick Presets */}
-          <div className="space-y-2">
-            <Label>{t('hueLamps.quickPresets')}</Label>
-            <div className="grid grid-cols-4 gap-2">
-              {brightnessPresets.map((preset) => (
-                <Button
-                  key={preset.value}
-                  variant={brightness[0] === preset.value ? 'default' : 'outline'}
-                  size="sm"
-                  disabled={!isConnected || !isOn}
-                  onClick={() => {
-                    setBrightness([preset.value])
-                    debouncedBrightnessUpdate(preset.value)
-                  }}
-                  className="flex flex-col gap-1 h-auto py-2"
-                >
-                  <preset.icon className="h-4 w-4" />
-                  <span className="text-xs">{preset.label}</span>
-                </Button>
-              ))}
             </div>
           </div>
 
@@ -385,12 +335,30 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
   })
 
   const [localBrightness, setLocalBrightness] = useState([lamp.state.brightness])
+  const targetBrightnessRef = useRef<number | null>(null)
 
+  // Optimistic sync: ignore server values until they match our target (±2% tolerance)
   useEffect(() => {
-    if (!brightnessMutation.isPending) {
-      setLocalBrightness([lamp.state.brightness])
+    const serverValue = lamp.state.brightness
+    const target = targetBrightnessRef.current
+    
+    if (target !== null) {
+      const isClose = Math.abs(serverValue - target) <= 2
+      if (isClose) {
+        targetBrightnessRef.current = null
+        setLocalBrightness([serverValue])
+      }
+    } else {
+      setLocalBrightness([serverValue])
     }
-  }, [lamp.state.brightness, brightnessMutation.isPending])
+  }, [lamp.state.brightness])
+
+  const handleBrightnessCommit = (value: number[]) => {
+    const newValue = value[0]
+    targetBrightnessRef.current = newValue
+    setLocalBrightness([newValue])
+    brightnessMutation.mutate(newValue)
+  }
 
   const isOn = lamp.state.isOn
   const isConnected = lamp.connected
@@ -414,7 +382,9 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
               )}
             </div>
             <div>
-              <CardTitle className="text-base">{lamp.name}</CardTitle>
+              <Link to={`/hue-lamp/${lamp.id}`}>
+                <CardTitle className="text-base hover:underline cursor-pointer">{lamp.name}</CardTitle>
+              </Link>
               <CardDescription className="text-xs">
                 {lamp.model || t('hueLamps.unknownModel')}
               </CardDescription>
@@ -450,7 +420,7 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
         <Slider
           value={localBrightness}
           onValueChange={setLocalBrightness}
-          onValueCommit={(value) => brightnessMutation.mutate(value[0])}
+          onValueCommit={handleBrightnessCommit}
           min={1}
           max={100}
           step={1}

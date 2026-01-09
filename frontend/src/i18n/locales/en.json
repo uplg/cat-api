@@ -251,6 +251,7 @@
     "unknownModel": "Unknown model",
     "notFound": "Lamp not found",
     "notConnected": "Lamp not connected",
-    "notConnectedDescription": "This lamp is not connected. It may be out of range or powered off."
+    "notConnectedDescription": "This lamp is not connected. It may be out of range or powered off.",
+    "lampControl": "Lamp Control"
   }
 }
