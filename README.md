@@ -1,6 +1,10 @@
-# 🐱 Cat Monitor
+# 🐱 Home Monitor
 
-A full-stack application for monitoring and controlling Tuya-based smart cat devices locally. Built with **Elysia** (backend) and **React** (frontend), it provides comprehensive device management for smart feeders, fountains, and automatic litter boxes.
+A full-stack application for monitoring and controlling Tuya-based smart cat devices locally. 
+Built with **Elysia** (backend) and **React** (frontend), it provides comprehensive device management for smart feeders, fountains, and automatic litter boxes.
+Also handles Hue lamps using BLE.
+
+Concept: A custom "home assistant" without the overhead.
 
 ![Cat Monitor](https://img.shields.io/badge/Made%20with-Bun-f472b6?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
@@ -65,7 +69,7 @@ A full-stack application for monitoring and controlling Tuya-based smart cat dev
 
 - [Bun](https://bun.sh) (latest version)
 - [Docker](https://docker.com) & Docker Compose (for production deployment)
-- One or more Tuya-compatible smart cat devices (feeders, fountains, litter boxes)
+- One or more Tuya-compatible smart cat devices (feeders, fountains, litter boxes) and/or Hue lamps.
 - Device credentials (ID, Key, IP) for each device
 
 ## 🛠️ Installation
