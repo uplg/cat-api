@@ -314,7 +314,20 @@ export class HueLampManager {
         lamp.peripheral = peripheral;
         lamp.lastSeen = new Date();
 
-        // Auto-connect if not connected
+        // Check if peripheral is already connected (state can get out of sync)
+        if (peripheral.state === "connected") {
+          if (!lamp.isConnected) {
+            console.log(
+              `🔄 ${lamp.config.name} peripheral is connected, syncing state...`
+            );
+            lamp.isConnected = true;
+            lamp.isConnecting = false;
+            lamp.state.reachable = true;
+          }
+          return; // Already connected, nothing to do
+        }
+
+        // Auto-connect if not connected and not already trying
         if (!lamp.isConnected && !lamp.isConnecting) {
           this.connectLamp(existingConfig.id);
         }
@@ -518,11 +531,53 @@ export class HueLampManager {
       return false;
     }
 
+    // Check if peripheral is already connected at BLE level
+    // This can happen if our state got out of sync
+    if (peripheral.state === "connected") {
+      console.log(
+        `💡 ${lamp.config.name} peripheral already connected, syncing state...`
+      );
+      lamp.peripheral = peripheral;
+      lamp.isConnected = true;
+      lamp.isConnecting = false;
+      lamp.state.reachable = true;
+      lamp.reconnectAttempts = 0;
+
+      // Setup disconnect handler if not already set
+      peripheral.removeAllListeners("disconnect");
+      peripheral.once("disconnect", () => {
+        console.log(`📴 Lamp ${lamp.config.name} disconnected`);
+        lamp.isConnected = false;
+        lamp.state.reachable = false;
+        lamp.characteristics = {};
+        this.scheduleReconnect(lampId);
+      });
+
+      // Try to rediscover characteristics if needed
+      if (Object.keys(lamp.characteristics).length === 0) {
+        try {
+          await this.discoverCharacteristics(lampId);
+          await this.subscribeToNotifications(lampId);
+          await this.refreshLampState(lampId, true);
+        } catch (error) {
+          console.error(
+            `⚠️ Failed to rediscover characteristics for ${lamp.config.name}:`,
+            error
+          );
+        }
+      }
+
+      return true;
+    }
+
     lamp.isConnecting = true;
     lamp.peripheral = peripheral;
 
     try {
       console.log(`🔗 Connecting to ${lamp.config.name}...`);
+
+      // Remove any existing disconnect listeners to avoid duplicates
+      peripheral.removeAllListeners("disconnect");
 
       // Setup disconnect handler
       peripheral.once("disconnect", () => {
@@ -907,9 +962,12 @@ export class HueLampManager {
 
     if (lamp.reconnectAttempts >= HUE_CONFIG.MAX_RECONNECT_ATTEMPTS) {
       console.log(
-        `💡 Max reconnect attempts reached for ${lamp.config.name}, waiting for scan...`
+        `💡 Max reconnect attempts reached for ${lamp.config.name}, waiting for next scan to rediscover...`
       );
       lamp.reconnectAttempts = 0;
+      // Clear the peripheral reference so next scan provides a fresh one
+      lamp.peripheral = null;
+      lamp.isConnecting = false;
       return;
     }
 
