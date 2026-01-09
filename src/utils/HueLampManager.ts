@@ -553,18 +553,24 @@ export class HueLampManager {
         this.scheduleReconnect(lampId);
       });
 
-      // Try to rediscover characteristics if needed
-      if (Object.keys(lamp.characteristics).length === 0) {
-        try {
-          await this.discoverCharacteristics(lampId);
-          await this.subscribeToNotifications(lampId);
-          await this.refreshLampState(lampId, true);
-        } catch (error) {
-          console.error(
-            `⚠️ Failed to rediscover characteristics for ${lamp.config.name}:`,
-            error
-          );
-        }
+      // Always rediscover characteristics when syncing state
+      // Previous characteristics may be stale after a BLE reconnection
+      try {
+        console.log(
+          `🔄 ${lamp.config.name} syncing - rediscovering characteristics...`
+        );
+        await this.discoverCharacteristics(lampId);
+        await this.subscribeToNotifications(lampId);
+        await this.refreshLampState(lampId, true);
+      } catch (error) {
+        console.error(
+          `⚠️ Failed to rediscover characteristics for ${lamp.config.name}:`,
+          error
+        );
+        // If we can't get characteristics, mark as not really connected
+        lamp.isConnected = false;
+        lamp.state.reachable = false;
+        lamp.characteristics = {};
       }
 
       return true;
@@ -735,6 +741,9 @@ export class HueLampManager {
     const lamp = this.lamps.get(lampId);
     if (!lamp?.peripheral) return;
 
+    // Clear existing characteristics before rediscovery
+    lamp.characteristics = {};
+
     const { characteristics } =
       await lamp.peripheral.discoverAllServicesAndCharacteristicsAsync();
 
@@ -760,10 +769,11 @@ export class HueLampManager {
       }
     }
 
+    const foundChars = Object.keys(lamp.characteristics);
     console.log(
-      `📋 Discovered ${
-        Object.keys(lamp.characteristics).length
-      } characteristics for ${lamp.config.name}`
+      `📋 Discovered ${foundChars.length} characteristics for ${
+        lamp.config.name
+      }: ${foundChars.join(", ")}`
     );
   }
 
@@ -1038,6 +1048,22 @@ export class HueLampManager {
       return false;
     }
 
+    // Check if we have valid characteristics
+    if (!lamp.characteristics.power && !lamp.characteristics.control) {
+      console.error(
+        `❌ Lamp ${lamp.config.name} has no power/control characteristics, trying to rediscover...`
+      );
+      try {
+        await this.discoverCharacteristics(lampId);
+      } catch (error) {
+        console.error(
+          `❌ Failed to rediscover characteristics for ${lamp.config.name}:`,
+          error
+        );
+        return false;
+      }
+    }
+
     try {
       if (lamp.characteristics.power) {
         const data = Buffer.from([on ? 0x01 : 0x00]);
@@ -1052,9 +1078,17 @@ export class HueLampManager {
         console.log(`💡 Lamp ${lamp.config.name} turned ${on ? "on" : "off"}`);
         return true;
       }
+      console.error(
+        `❌ Lamp ${lamp.config.name} has no power/control characteristics after rediscovery`
+      );
       return false;
     } catch (error) {
-      console.error(`❌ Failed to set power for ${lampId}:`, error);
+      console.error(`❌ Failed to set power for ${lamp.config.name}:`, error);
+      // Mark as disconnected if write fails - characteristics may be stale
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      this.scheduleReconnect(lampId);
       return false;
     }
   }
@@ -1070,6 +1104,22 @@ export class HueLampManager {
     }
 
     const brightness = toBrightness(percentage);
+
+    // Check if we have valid characteristics
+    if (!lamp.characteristics.brightness && !lamp.characteristics.control) {
+      console.error(
+        `❌ Lamp ${lamp.config.name} has no brightness/control characteristics, trying to rediscover...`
+      );
+      try {
+        await this.discoverCharacteristics(lampId);
+      } catch (error) {
+        console.error(
+          `❌ Failed to rediscover characteristics for ${lamp.config.name}:`,
+          error
+        );
+        return false;
+      }
+    }
 
     try {
       if (lamp.characteristics.brightness) {
@@ -1089,9 +1139,20 @@ export class HueLampManager {
         );
         return true;
       }
+      console.error(
+        `❌ Lamp ${lamp.config.name} has no brightness/control characteristics after rediscovery`
+      );
       return false;
     } catch (error) {
-      console.error(`❌ Failed to set brightness for ${lampId}:`, error);
+      console.error(
+        `❌ Failed to set brightness for ${lamp.config.name}:`,
+        error
+      );
+      // Mark as disconnected if write fails - characteristics may be stale
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      this.scheduleReconnect(lampId);
       return false;
     }
   }
@@ -1135,7 +1196,15 @@ export class HueLampManager {
         return powerResult;
       }
     } catch (error) {
-      console.error(`❌ Failed to set lamp state for ${lampId}:`, error);
+      console.error(
+        `❌ Failed to set lamp state for ${lamp.config.name}:`,
+        error
+      );
+      // Mark as disconnected if write fails
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      this.scheduleReconnect(lampId);
       return false;
     }
   }
