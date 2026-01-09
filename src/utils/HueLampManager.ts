@@ -594,9 +594,7 @@ export class HueLampManager {
       const isAuthError =
         errorMessage.includes("401") ||
         errorMessage.includes("Unauthorized") ||
-        errorMessage.includes("not authorized") ||
-        errorMessage.includes("pairing") ||
-        errorMessage.includes("authentication");
+        errorMessage.includes("not authorized");
 
       // Connection timeout after multiple failures suggests lamp is not ours
       const isTimeoutError = errorMessage.toLowerCase().includes("timeout");
@@ -606,10 +604,9 @@ export class HueLampManager {
           `🔒 Lamp ${lamp.config.name} requires pairing (not authorized)`
         );
         lamp.pairingRequired = true;
-        // Only blacklist if we've NEVER connected to this lamp
-        if (!lamp.config.hasConnectedOnce) {
-          this.removeLampFromConfig(lampId);
-        }
+
+        this.scheduleReconnect(lampId);
+
         return false;
       }
 
