@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { hueLampsApi, type HueLamp } from '@/lib/api'
-import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -24,7 +23,6 @@ import {
   Wifi,
   WifiOff,
   Sun,
-  Moon,
 } from 'lucide-react'
 
 interface HueLampControlProps {

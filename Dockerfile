@@ -17,6 +17,8 @@ WORKDIR /app
 COPY --from=builder /app/devices.json ./devices.json
 COPY --from=builder /app/device-cache.json ./device-cache.json
 COPY --from=builder /app/users.json ./users.json
+COPY --from=builder /app/hue-lamps.json ./hue-lamps.json
+COPY --from=builder /app/hue-lamps-blacklist.json ./hue-lamps-blacklist.json
 COPY --from=builder /app/server ./server
 
 CMD ["./server"]
