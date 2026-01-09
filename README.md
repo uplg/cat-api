@@ -213,23 +213,67 @@ To use Philips Hue Bluetooth lamps, run the backend locally (for Bluetooth acces
 make hybrid   # Starts local backend + Docker frontend
 ```
 
-| Mode | Tuya Devices | Hue Lamps | Command |
-|------|--------------|-----------|---------|
-| Docker | ✅ | ❌ | `docker-compose up -d` |
-| Hybrid | ✅ | ✅ | `make hybrid` |
-| Local dev | ✅ | ✅ | `bun run dev` |
+| Mode | Tuya Devices | Hue Lamps | HTTPS/PWA | Command |
+|------|--------------|-----------|-----------|---------|
+| Docker | ✅ | ❌ | ❌ | `docker-compose up -d` |
+| Docker SSL | ✅ | ❌ | ✅ | `make ssl-up` |
+| Hybrid | ✅ | ✅ | ❌ | `make hybrid` |
+| Hybrid SSL | ✅ | ✅ | ✅ | `make hybrid-ssl` |
+| Local dev | ✅ | ✅ | ❌ | `bun run dev` |
 
 ### Makefile Commands
 
 ```bash
-make help           # Show all commands
-make hybrid         # Start hybrid mode
-make backend-local  # Start backend only (background)
-make backend-stop   # Stop local backend
-make docker-up      # Start Docker mode
-make docker-down    # Stop Docker
-make clean          # Stop everything
+make help              # Show all commands
+
+# Development
+make dev               # Start backend + frontend in dev mode
+make backend-local     # Start backend only (background)
+make backend-stop      # Stop local backend
+make backend-logs      # Tail backend logs
+
+# Docker
+make docker-up         # Start Docker mode
+make docker-down       # Stop Docker
+make docker-build      # Build Docker images
+
+# Hybrid (Bluetooth support)
+make hybrid            # Local backend + Docker frontend
+
+# PWA & SSL (mobile app access)
+make ssl-setup         # Generate SSL certs + PWA icons
+make ssl-up            # Start with HTTPS (Docker)
+make ssl-down          # Stop SSL containers
+make hybrid-ssl        # Hybrid mode with SSL
+
+# Cleanup
+make clean             # Stop everything
+make status            # Show services status
 ```
+
+### PWA / Mobile Access
+
+To install Cat Monitor as an app on iPhone/Android:
+
+1. **Generate SSL certificates** (uses [mkcert](https://github.com/FiloSottile/mkcert)):
+   ```bash
+   make ssl-setup
+   ```
+
+2. **Install the CA on iPhone**:
+   - Run `mkcert -CAROOT` to find the CA file
+   - AirDrop `rootCA.pem` to the iPhone
+   - Install the profile, then go to **Settings → General → About → Certificate Trust Settings** and enable trust
+
+3. **Start with SSL**:
+   ```bash
+   make ssl-up        # Full Docker
+   make hybrid-ssl    # With Bluetooth
+   ```
+
+4. **Add to Home Screen**:
+   - Open Safari → `https://<your-ip>`
+   - Tap Share → "Add to Home Screen"
 
 ### Configuration
 
