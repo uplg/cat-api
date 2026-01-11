@@ -2,7 +2,7 @@
 
 A full-stack application for monitoring and controlling Tuya-based smart cat devices locally. 
 
-Built with **Elysia** (backend) and **React** (frontend), it provides comprehensive device management for smart feeders, fountains, and automatic litter boxes, Hue lamps through BLE (what I have at home.).
+Built with **Elysia** (backend) and **React** (frontend), it provides comprehensive device management for smart feeders, fountains, and automatic litter boxes, Hue lamps through BLE.
 
 Concept: A custom "home assistant" without the overhead.
 
