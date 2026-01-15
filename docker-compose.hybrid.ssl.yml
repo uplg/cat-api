@@ -15,7 +15,6 @@ services:
       # Point to local backend via Docker's host gateway
       - BACKEND_URL=host.docker.internal:${API_PORT:-3033}
     volumes:
-      # Monte les certificats SSL
       - ./scripts/ssl:/etc/nginx/ssl:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -35,18 +35,27 @@ backend-local: ## Start backend locally with Bluetooth support (background, pers
 	fi
 
 backend-stop: ## Stop the local backend
+	@echo "$(GREEN)Stopping backend...$(RESET)"
+	@# Kill process from PID file if exists
 	@if [ -f .backend.pid ]; then \
 		PID=$$(cat .backend.pid); \
 		if kill -0 $$PID 2>/dev/null; then \
-			kill $$PID; \
-			echo "$(GREEN)Backend stopped (PID: $$PID)$(RESET)"; \
-		else \
-			echo "$(YELLOW)Backend not running$(RESET)"; \
+			kill $$PID 2>/dev/null || true; \
+			echo "Stopped PID $$PID from .backend.pid"; \
 		fi; \
 		rm -f .backend.pid; \
-	else \
-		echo "$(YELLOW)No PID file found$(RESET)"; \
 	fi
+	@# Kill any remaining bun processes running the backend
+	@pkill -f "bun.*src/index.ts" 2>/dev/null || true
+	@pkill -f "bun run src/index.ts" 2>/dev/null || true
+	@pkill -f "bun --watch src/index.ts" 2>/dev/null || true
+	@# Also kill any bun run dev processes (which spawn backend)
+	@pkill -f "bun run dev:backend" 2>/dev/null || true
+	@# Give processes time to die
+	@sleep 1
+	@# Force kill if still running
+	@pkill -9 -f "bun.*src/index.ts" 2>/dev/null || true
+	@echo "$(GREEN)Backend stopped$(RESET)"
 
 backend-restart: backend-stop backend-local ## Restart the local backend
 
@@ -94,9 +103,13 @@ docker-frontend: ## Start only the frontend in Docker
 # Utilities
 # =====================
 
-clean: backend-stop docker-down ## Stop everything and clean up
+clean: backend-stop ## Stop everything and clean up
+	@echo "$(GREEN)Stopping all Docker containers...$(RESET)"
+	@docker-compose down 2>/dev/null || true
+	@docker-compose -f docker-compose.hybrid.yml down 2>/dev/null || true
+	@docker-compose -f docker-compose.ssl.yml down 2>/dev/null || true
+	@docker-compose -f docker-compose.hybrid.ssl.yml down 2>/dev/null || true
 	@rm -f .backend.pid
-	@rm -rf logs
 	@echo "$(GREEN)Cleaned up$(RESET)"
 
 status: ## Show status of services
