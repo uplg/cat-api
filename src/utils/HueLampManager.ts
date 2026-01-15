@@ -27,6 +27,11 @@ export interface HueLampConfig {
   model?: string;
   /** True if we've successfully connected to this lamp at least once */
   hasConnectedOnce?: boolean;
+  /** Discovered temperature limits (persisted to avoid rediscovery) */
+  temperatureMin?: number;
+  temperatureMax?: number;
+  /** Last known temperature (to restore after power cycle) */
+  lastTemperature?: number;
 }
 
 export interface HueLampInstance {
@@ -788,10 +793,44 @@ export class HueLampManager {
   /**
    * Discover the actual temperature limits of a lamp by testing extreme values
    * Some lamps have a narrower range than the full 0-100%
+   * Limits are persisted in config to avoid rediscovery on reconnect
    */
   private async discoverTemperatureLimits(lampId: string): Promise<void> {
     const lamp = this.lamps.get(lampId);
     if (!lamp?.characteristics.temperature) return;
+
+    // Check if we already have saved limits in config
+    if (
+      lamp.config.temperatureMin !== undefined &&
+      lamp.config.temperatureMax !== undefined
+    ) {
+      lamp.state.temperatureMin = lamp.config.temperatureMin;
+      lamp.state.temperatureMax = lamp.config.temperatureMax;
+      console.log(
+        `🌡️ ${lamp.config.name} using saved temperature limits: ${lamp.state.temperatureMin}% - ${lamp.state.temperatureMax}%`
+      );
+
+      // Restore last saved temperature if available
+      if (lamp.config.lastTemperature !== undefined) {
+        try {
+          const rawTemp = toTemperature(lamp.config.lastTemperature);
+          await lamp.characteristics.temperature.writeAsync(
+            Buffer.from([rawTemp, 0x01]),
+            false
+          );
+          lamp.state.temperature = lamp.config.lastTemperature;
+          console.log(
+            `🌡️ ${lamp.config.name} restored temperature to ${lamp.config.lastTemperature}% (raw: ${rawTemp})`
+          );
+        } catch (error) {
+          console.error(
+            `❌ Failed to restore temperature for ${lamp.config.name}:`,
+            error
+          );
+        }
+      }
+      return;
+    }
 
     console.log(`🌡️ Discovering temperature limits for ${lamp.config.name}...`);
 
@@ -828,6 +867,13 @@ export class HueLampManager {
       console.log(
         `🌡️ ${lamp.config.name} max temperature: 100% (always allowed)`
       );
+
+      // Save limits to config for persistence
+      lamp.config.temperatureMin = lamp.state.temperatureMin;
+      lamp.config.temperatureMax = lamp.state.temperatureMax;
+      // Also save current temperature as lastTemperature for future power cycles
+      lamp.config.lastTemperature = lamp.state.temperature;
+      this.saveConfig();
 
       // Restore to original value
       await lamp.characteristics.temperature.writeAsync(
@@ -1322,6 +1368,9 @@ export class HueLampManager {
         const data = Buffer.from([rawTemp, 0x01]);
         await lamp.characteristics.temperature.writeAsync(data, false);
         lamp.state.temperature = temperature; // Store as percentage, not raw
+        // Save last temperature to config for persistence across power cycles
+        lamp.config.lastTemperature = temperature;
+        this.saveConfig();
         console.log(
           `💡 Lamp ${lamp.config.name} temperature set to ${temperature}% (raw: ${rawTemp})`
         );
@@ -1330,6 +1379,9 @@ export class HueLampManager {
         const command = buildControlCommand({ temperature: rawTemp });
         await lamp.characteristics.control.writeAsync(command, false);
         lamp.state.temperature = temperature; // Store as percentage, not raw
+        // Save last temperature to config for persistence across power cycles
+        lamp.config.lastTemperature = temperature;
+        this.saveConfig();
         console.log(
           `💡 Lamp ${lamp.config.name} temperature set to ${temperature}% (raw: ${rawTemp})`
         );

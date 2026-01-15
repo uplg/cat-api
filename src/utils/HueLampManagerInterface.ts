@@ -14,6 +14,8 @@ export interface HueLampState {
   isOn: boolean;
   brightness: number;
   temperature?: number | null;
+  temperatureMin?: number | null;
+  temperatureMax?: number | null;
   reachable: boolean;
 }
 
