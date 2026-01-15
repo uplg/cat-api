@@ -47,7 +47,9 @@ export type HueLampModel = (typeof HUE_LAMP_MODELS)[number];
 export interface HueLampState {
   isOn: boolean;
   brightness: number; // 1-254
-  temperature?: number; // Color temperature if supported
+  temperature?: number; // Color temperature percentage (0-100)
+  temperatureMin?: number; // Minimum temperature the lamp supports (0-100)
+  temperatureMax?: number; // Maximum temperature the lamp supports (0-100)
   reachable: boolean;
 }
 
@@ -75,6 +77,29 @@ export function toBrightness(percentage: number): number {
   // Clamp to valid range
   const clamped = Math.max(1, Math.min(100, percentage));
   return Math.round((clamped / 100) * 254);
+}
+
+/**
+ * Parse temperature from raw BLE value (1-244) to percentage (0-100)
+ * Hue uses inverted Mirek-like values: 1=cool/white (6500K), 244=warm/yellow (2000K)
+ * We invert to make 0%=warm, 100%=cool for intuitive UI
+ * Linear mapping: raw 244 → 0%, raw 1 → 100%
+ */
+export function parseTemperature(rawValue: number): number {
+  const clamped = Math.max(1, Math.min(244, rawValue));
+  // Linear interpolation: raw 244 → 0%, raw 1 → 100%
+  return Math.round(((244 - clamped) / 243) * 100);
+}
+
+/**
+ * Convert percentage (0-100) to raw BLE temperature value (1-244)
+ * Inverted: 0%=warm=244raw, 100%=cool=1raw
+ * Linear mapping: 0% → raw 244, 100% → raw 1
+ */
+export function toTemperature(percentage: number): number {
+  const clamped = Math.max(0, Math.min(100, percentage));
+  // Linear interpolation: 0% → 244, 100% → 1
+  return Math.round(244 - (clamped / 100) * 243);
 }
 
 /**

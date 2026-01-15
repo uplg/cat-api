@@ -15,6 +15,8 @@ import {
   isHueLamp,
   parseBrightness,
   toBrightness,
+  parseTemperature,
+  toTemperature,
   buildControlCommand,
 } from "./HueLamp";
 
@@ -776,6 +778,79 @@ export class HueLampManager {
         lamp.config.name
       }: ${foundChars.join(", ")}`
     );
+
+    // Discover temperature limits if lamp supports temperature
+    if (lamp.characteristics.temperature) {
+      await this.discoverTemperatureLimits(lampId);
+    }
+  }
+
+  /**
+   * Discover the actual temperature limits of a lamp by testing extreme values
+   * Some lamps have a narrower range than the full 0-100%
+   */
+  private async discoverTemperatureLimits(lampId: string): Promise<void> {
+    const lamp = this.lamps.get(lampId);
+    if (!lamp?.characteristics.temperature) return;
+
+    console.log(`🌡️ Discovering temperature limits for ${lamp.config.name}...`);
+
+    try {
+      // Read current temperature to restore later
+      const currentData = await lamp.characteristics.temperature.readAsync();
+      let currentRaw = 122; // Default to middle if read fails
+      if (currentData.length >= 2 && currentData[1] === 0x01) {
+        currentRaw = currentData[0];
+        console.log(
+          `🌡️ ${lamp.config.name} current temperature before discovery: raw=${currentRaw}`
+        );
+      }
+
+      // Test minimum (warmest) - send raw 244 (0%)
+      // This is the most restrictive limit - some lamps can't go very warm
+      const minRaw = toTemperature(0);
+      await lamp.characteristics.temperature.writeAsync(
+        Buffer.from([minRaw, 0x01]),
+        false
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for lamp to settle
+      const minData = await lamp.characteristics.temperature.readAsync();
+      if (minData.length >= 2 && minData[1] === 0x01) {
+        lamp.state.temperatureMin = parseTemperature(minData[0]);
+        console.log(
+          `🌡️ ${lamp.config.name} min temperature: ${lamp.state.temperatureMin}% (raw: ${minData[0]})`
+        );
+      }
+
+      // Always allow max to be 100% - lamps generally accept cool temperatures fine
+      // The min limit is what matters for warm temperatures
+      lamp.state.temperatureMax = 100;
+      console.log(
+        `🌡️ ${lamp.config.name} max temperature: 100% (always allowed)`
+      );
+
+      // Restore to original value
+      await lamp.characteristics.temperature.writeAsync(
+        Buffer.from([currentRaw, 0x01]),
+        false
+      );
+      lamp.state.temperature = parseTemperature(currentRaw);
+      console.log(
+        `🌡️ ${lamp.config.name} restored to ${lamp.state.temperature}% (raw: ${currentRaw})`
+      );
+
+      console.log(
+        `🌡️ ${lamp.config.name} temperature range: ${lamp.state.temperatureMin}% - ${lamp.state.temperatureMax}%`
+      );
+    } catch (error) {
+      console.error(
+        `❌ Failed to discover temperature limits for ${lamp.config.name}:`,
+        error
+      );
+      // Default to full range on error
+      lamp.state.temperatureMin = 0;
+      lamp.state.temperatureMax = 100;
+    }
   }
 
   /**
@@ -964,8 +1039,33 @@ export class HueLampManager {
       // Read temperature if available
       if (lamp.characteristics.temperature) {
         const data = await lamp.characteristics.temperature.readAsync();
+        console.log(
+          `🌡️ ${lamp.config.name} raw temperature data:`,
+          data.toString("hex"),
+          `bytes: [${data[0]}, ${data[1]}]`
+        );
         if (data.length >= 2 && data[1] === 0x01) {
-          lamp.state.temperature = data[0];
+          // Convert raw value (1-244) to percentage (0-100)
+          const rawTemp = data[0];
+          const parsedTemp = parseTemperature(rawTemp);
+          console.log(
+            `🌡️ ${lamp.config.name} temperature: raw=${rawTemp} -> parsed=${parsedTemp}%`
+          );
+          lamp.state.temperature = parsedTemp;
+
+          // Update observed min/max limits
+          if (
+            lamp.state.temperatureMin === undefined ||
+            parsedTemp < lamp.state.temperatureMin
+          ) {
+            lamp.state.temperatureMin = parsedTemp;
+          }
+          if (
+            lamp.state.temperatureMax === undefined ||
+            parsedTemp > lamp.state.temperatureMax
+          ) {
+            lamp.state.temperatureMax = parsedTemp;
+          }
         }
       }
 
@@ -1186,6 +1286,74 @@ export class HueLampManager {
   }
 
   /**
+   * Set lamp color temperature (warm to cool white)
+   * @param lampId - Lamp ID
+   * @param temperature - Temperature value 1-100 (1=warm/yellow, 100=cool/white)
+   */
+  async setTemperature(lampId: string, temperature: number): Promise<boolean> {
+    const lamp = this.lamps.get(lampId);
+    if (!lamp?.isConnected) {
+      console.error(`❌ Lamp ${lampId} not connected`);
+      return false;
+    }
+
+    // Convert percentage to raw value using toTemperature helper
+    const rawTemp = toTemperature(temperature);
+
+    // Check if we have temperature characteristic
+    if (!lamp.characteristics.temperature && !lamp.characteristics.control) {
+      console.error(
+        `❌ Lamp ${lamp.config.name} has no temperature/control characteristics, trying to rediscover...`
+      );
+      try {
+        await this.discoverCharacteristics(lampId);
+      } catch (error) {
+        console.error(
+          `❌ Failed to rediscover characteristics for ${lamp.config.name}:`,
+          error
+        );
+        return false;
+      }
+    }
+
+    try {
+      if (lamp.characteristics.temperature) {
+        // Temperature characteristic format: [value, 0x01 (enable flag)]
+        const data = Buffer.from([rawTemp, 0x01]);
+        await lamp.characteristics.temperature.writeAsync(data, false);
+        lamp.state.temperature = temperature; // Store as percentage, not raw
+        console.log(
+          `💡 Lamp ${lamp.config.name} temperature set to ${temperature}% (raw: ${rawTemp})`
+        );
+        return true;
+      } else if (lamp.characteristics.control) {
+        const command = buildControlCommand({ temperature: rawTemp });
+        await lamp.characteristics.control.writeAsync(command, false);
+        lamp.state.temperature = temperature; // Store as percentage, not raw
+        console.log(
+          `💡 Lamp ${lamp.config.name} temperature set to ${temperature}% (raw: ${rawTemp})`
+        );
+        return true;
+      }
+      console.error(
+        `❌ Lamp ${lamp.config.name} does not support color temperature`
+      );
+      return false;
+    } catch (error) {
+      console.error(
+        `❌ Failed to set temperature for ${lamp.config.name}:`,
+        error
+      );
+      // Mark as disconnected if write fails
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      this.scheduleReconnect(lampId);
+      return false;
+    }
+  }
+
+  /**
    * Set lamp power and brightness together
    */
   async setLampState(
@@ -1335,9 +1503,11 @@ export class HueLampManager {
     // Try to read a characteristic to verify the connection is working
     // Use a timeout to detect unresponsive lamps (e.g., power switch off)
     const READ_TIMEOUT_MS = 3000;
-    
+
     try {
-      const readWithTimeout = async (char: typeof lamp.characteristics.power) => {
+      const readWithTimeout = async (
+        char: typeof lamp.characteristics.power
+      ) => {
         if (!char) throw new Error("No characteristic");
         return Promise.race([
           char.readAsync(),
@@ -1361,7 +1531,10 @@ export class HueLampManager {
         await Promise.race([
           this.discoverCharacteristics(lampId),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Discovery timeout")), READ_TIMEOUT_MS)
+            setTimeout(
+              () => reject(new Error("Discovery timeout")),
+              READ_TIMEOUT_MS
+            )
           ),
         ]);
         return (
@@ -1376,18 +1549,20 @@ export class HueLampManager {
       lamp.isConnected = false;
       lamp.state.reachable = false;
       lamp.characteristics = {};
-      
+
       // Try to disconnect the peripheral to clean up BLE state
       try {
         if (lamp.peripheral && lamp.peripheral.state === "connected") {
-          console.log(`🔌 Force disconnecting stale peripheral for ${lamp.config.name}`);
+          console.log(
+            `🔌 Force disconnecting stale peripheral for ${lamp.config.name}`
+          );
           await lamp.peripheral.disconnectAsync();
         }
       } catch (disconnectError) {
         // Ignore disconnect errors
       }
       lamp.peripheral = null;
-      
+
       return false;
     }
   }

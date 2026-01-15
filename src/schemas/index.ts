@@ -576,6 +576,15 @@ export const HueLampBrightnessSchema = t.Object({
   }),
 });
 
+export const HueLampTemperatureSchema = t.Object({
+  temperature: t.Number({
+    minimum: 0,
+    maximum: 100,
+    description: "Color temperature percentage (0=warm/yellow, 100=cool/white)",
+    default: 50,
+  }),
+});
+
 export const HueLampRenameSchema = t.Object({
   name: t.String({
     minLength: 1,
@@ -597,7 +606,15 @@ const HueLampInfoSchema = t.Object({
   state: t.Object({
     isOn: t.Boolean({ description: "Power state" }),
     brightness: t.Number({ description: "Brightness percentage (1-100)" }),
-    temperature: t.Nullable(t.Number({ description: "Color temperature" })),
+    temperature: t.Nullable(
+      t.Number({ description: "Color temperature percentage" })
+    ),
+    temperatureMin: t.Nullable(
+      t.Number({ description: "Minimum temperature the lamp supports" })
+    ),
+    temperatureMax: t.Nullable(
+      t.Number({ description: "Maximum temperature the lamp supports" })
+    ),
   }),
   lastSeen: t.Nullable(t.String({ description: "Last seen timestamp" })),
 });

@@ -72,6 +72,10 @@ export class HueLampManager implements IHueLampManager {
     return false;
   }
 
+  async setTemperature(_id: string, _temperature: number): Promise<boolean> {
+    return false;
+  }
+
   async setLampState(
     _id: string,
     _isOn: boolean,

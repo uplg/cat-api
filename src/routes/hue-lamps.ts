@@ -6,6 +6,7 @@ import {
   HueLampStatusResponseSchema,
   HueLampPowerSchema,
   HueLampBrightnessSchema,
+  HueLampTemperatureSchema,
   HueLampStateSchema,
   HueLampRenameSchema,
   HueLampResponseSchema,
@@ -47,7 +48,9 @@ export function createHueLampRoutes(getHueLampManager: () => IHueLampManager) {
             state: {
               isOn: lamp.state.isOn,
               brightness: parseBrightness(lamp.state.brightness),
-              temperature: lamp.state.temperature || null,
+              temperature: lamp.state.temperature ?? null,
+              temperatureMin: lamp.state.temperatureMin ?? null,
+              temperatureMax: lamp.state.temperatureMax ?? null,
             },
             lastSeen: lamp.lastSeen?.toISOString() || null,
           }));
@@ -162,7 +165,9 @@ export function createHueLampRoutes(getHueLampManager: () => IHueLampManager) {
               state: {
                 isOn: lamp.state.isOn,
                 brightness: parseBrightness(lamp.state.brightness),
-                temperature: lamp.state.temperature || null,
+                temperature: lamp.state.temperature ?? null,
+                temperatureMin: lamp.state.temperatureMin ?? null,
+                temperatureMax: lamp.state.temperatureMax ?? null,
               },
               lastSeen: lamp.lastSeen?.toISOString() || null,
             },
@@ -347,7 +352,67 @@ export function createHueLampRoutes(getHueLampManager: () => IHueLampManager) {
         }
       )
 
-      // 🎚️ Set lamp state (power + brightness together)
+      // �️ Set lamp color temperature
+      .post(
+        "/:lampId/temperature",
+        async ({ params, body, set, hueLampManager }) => {
+          const lamp = hueLampManager.getLamp(params.lampId);
+
+          if (!lamp) {
+            set.status = 404;
+            return {
+              success: false,
+              error: "Lamp not found",
+            };
+          }
+
+          if (!lamp.isConnected) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Lamp not connected",
+            };
+          }
+
+          try {
+            const result = await hueLampManager.setTemperature(
+              params.lampId,
+              body.temperature
+            );
+
+            if (!result) {
+              set.status = 500;
+              return {
+                success: false,
+                error:
+                  "Failed to set temperature (lamp may not support color temperature)",
+              };
+            }
+
+            return {
+              success: true,
+              state: {
+                isOn: lamp.state.isOn,
+                brightness: parseBrightness(lamp.state.brightness),
+                temperature: body.temperature,
+              },
+              message: `Color temperature set to ${body.temperature}%`,
+            };
+          } catch (error) {
+            set.status = 500;
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        },
+        {
+          body: HueLampTemperatureSchema,
+          response: HueLampResponseSchema,
+        }
+      )
+
+      // �🎚️ Set lamp state (power + brightness together)
       .post(
         "/:lampId/state",
         async ({ params, body, set, hueLampManager }) => {

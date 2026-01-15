@@ -261,6 +261,8 @@ export interface HueLampState {
   isOn: boolean;
   brightness: number;
   temperature: number | null;
+  temperatureMin: number | null;
+  temperatureMax: number | null;
 }
 
 export interface HueLamp {
@@ -342,6 +344,12 @@ export const hueLampsApi = {
     api<HueLampActionResponse>(`/hue-lamps/${lampId}/brightness`, {
       method: "POST",
       body: { brightness },
+    }),
+
+  temperature: (lampId: string, temperature: number) =>
+    api<HueLampActionResponse>(`/hue-lamps/${lampId}/temperature`, {
+      method: "POST",
+      body: { temperature },
     }),
 
   state: (lampId: string, isOn: boolean, brightness?: number) =>

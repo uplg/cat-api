@@ -60,6 +60,7 @@ export interface IHueLampManager {
   ): Promise<HueLampState | null | void>;
   setPower(id: string, on: boolean): Promise<boolean>;
   setBrightness(id: string, brightness: number): Promise<boolean>;
+  setTemperature(id: string, temperature: number): Promise<boolean>;
   setLampState(
     id: string,
     isOn: boolean,

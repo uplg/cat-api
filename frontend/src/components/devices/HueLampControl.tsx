@@ -23,6 +23,7 @@ import {
   Wifi,
   WifiOff,
   Sun,
+  Thermometer,
 } from 'lucide-react'
 
 interface HueLampControlProps {
@@ -43,8 +44,12 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
 
   // Local brightness state with optimistic updates
   const [localBrightness, setLocalBrightness] = useState<number[]>([lamp?.state.brightness ?? 100])
+  // Local temperature state with optimistic updates
+  const [localTemperature, setLocalTemperature] = useState<number[]>([lamp?.state.temperature ?? 50])
   // Target brightness - we ignore server updates until server reaches this value
   const targetBrightnessRef = useRef<number | null>(null)
+  // Target temperature - we ignore server updates until server reaches this value
+  const targetTemperatureRef = useRef<number | null>(null)
   // Cooldown after power toggle to ignore brightness updates
   const powerCooldownRef = useRef<number>(0)
 
@@ -84,6 +89,23 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
     },
   })
 
+  const temperatureMutation = useMutation({
+    mutationFn: (value: number) => hueLampsApi.temperature(lampId, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hue-lamp', lampId] })
+      queryClient.invalidateQueries({ queryKey: ['hue-lamps'] })
+    },
+    onError: (error) => {
+      // Reset target on error so we can resync
+      targetTemperatureRef.current = null
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('hueLamps.temperatureFailed'),
+        variant: 'destructive',
+      })
+    },
+  })
+
   // Optimistic sync: ignore server values until they match our target (±2% tolerance)
   // Also ignore during power toggle cooldown to avoid flicker
   useEffect(() => {
@@ -117,6 +139,31 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
     targetBrightnessRef.current = newValue
     setLocalBrightness([newValue])
     brightnessMutation.mutate(newValue)
+  }
+
+  // Optimistic sync for temperature
+  useEffect(() => {
+    if (lamp?.state.temperature === undefined || lamp?.state.temperature === null) return
+    
+    const serverValue = lamp.state.temperature
+    const target = targetTemperatureRef.current
+    
+    if (target !== null) {
+      const isClose = Math.abs(serverValue - target) <= 2
+      if (isClose) {
+        targetTemperatureRef.current = null
+        setLocalTemperature([serverValue])
+      }
+    } else {
+      setLocalTemperature([serverValue])
+    }
+  }, [lamp?.state.temperature])
+
+  const handleTemperatureCommit = (value: number[]) => {
+    const newValue = value[0]
+    targetTemperatureRef.current = newValue
+    setLocalTemperature([newValue])
+    temperatureMutation.mutate(newValue)
   }
 
   const handlePowerToggle = (checked: boolean) => {
@@ -251,6 +298,61 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
         </CardContent>
       </Card>
 
+      {/* Color Temperature Control Card */}
+      {lamp.state.temperature !== null && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Thermometer className="h-5 w-5" />
+              {t('hueLamps.temperature')}
+            </CardTitle>
+            <CardDescription>
+              {t('hueLamps.temperatureDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Temperature Slider */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>{t('hueLamps.currentTemperature')}</Label>
+                <span className="text-2xl font-bold">
+                  {localTemperature[0]}%
+                </span>
+              </div>
+              <div className="relative">
+                <Slider
+                  value={localTemperature}
+                  onValueChange={setLocalTemperature}
+                  onValueCommit={handleTemperatureCommit}
+                  min={lamp.state.temperatureMin ?? 0}
+                  max={lamp.state.temperatureMax ?? 100}
+                  step={1}
+                  disabled={!isConnected || !isOn}
+                  className="cursor-pointer"
+                />
+                {/* Gradient background for visual feedback */}
+                <div 
+                  className="absolute inset-0 -z-10 h-2 top-1/2 -translate-y-1/2 rounded-full opacity-30"
+                  style={{ background: 'linear-gradient(to right, #f59e0b, #fbbf24, #fef3c7, #e0f2fe, #bae6fd, #7dd3fc)' }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>🔥 {t('hueLamps.warm')}</span>
+                <span>❄️ {t('hueLamps.cool')}</span>
+              </div>
+            </div>
+
+            {/* Status indicator */}
+            {temperatureMutation.isPending && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('hueLamps.updating')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Device Info Card */}
       <Card>
         <CardHeader>
@@ -340,8 +442,17 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
     },
   })
 
+  const temperatureMutation = useMutation({
+    mutationFn: (value: number) => hueLampsApi.temperature(lamp.id, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hue-lamps'] })
+    },
+  })
+
   const [localBrightness, setLocalBrightness] = useState([lamp.state.brightness])
+  const [localTemperature, setLocalTemperature] = useState([lamp.state.temperature ?? 50])
   const targetBrightnessRef = useRef<number | null>(null)
+  const targetTemperatureRef = useRef<number | null>(null)
   const powerCooldownRef = useRef<number>(0)
 
   // Optimistic sync: ignore server values until they match our target (±2% tolerance)
@@ -365,11 +476,39 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
     }
   }, [lamp.state.brightness])
 
+  // Temperature optimistic sync
+  useEffect(() => {
+    if (lamp.state.temperature === null) return
+    
+    const now = Date.now()
+    if (now - powerCooldownRef.current < 1000) return
+    
+    const serverValue = lamp.state.temperature
+    const target = targetTemperatureRef.current
+    
+    if (target !== null) {
+      const isClose = Math.abs(serverValue - target) <= 2
+      if (isClose) {
+        targetTemperatureRef.current = null
+        setLocalTemperature([serverValue])
+      }
+    } else {
+      setLocalTemperature([serverValue])
+    }
+  }, [lamp.state.temperature])
+
   const handleBrightnessCommit = (value: number[]) => {
     const newValue = value[0]
     targetBrightnessRef.current = newValue
     setLocalBrightness([newValue])
     brightnessMutation.mutate(newValue)
+  }
+
+  const handleTemperatureCommit = (value: number[]) => {
+    const newValue = value[0]
+    targetTemperatureRef.current = newValue
+    setLocalTemperature([newValue])
+    temperatureMutation.mutate(newValue)
   }
 
   const isOn = lamp.state.isOn
@@ -432,16 +571,36 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
         </div>
 
         {/* Mini brightness slider */}
-        <Slider
-          value={localBrightness}
-          onValueChange={setLocalBrightness}
-          onValueCommit={handleBrightnessCommit}
-          min={1}
-          max={100}
-          step={1}
-          disabled={!isConnected || !isOn}
-          className="cursor-pointer"
-        />
+        <div className="flex items-center gap-2">
+          <Sun className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+          <Slider
+            value={localBrightness}
+            onValueChange={setLocalBrightness}
+            onValueCommit={handleBrightnessCommit}
+            min={1}
+            max={100}
+            step={1}
+            disabled={!isConnected || !isOn}
+            className="cursor-pointer"
+          />
+        </div>
+
+        {/* Mini temperature slider - only if lamp supports it */}
+        {lamp.state.temperature !== null && (
+          <div className="flex items-center gap-2">
+            <Thermometer className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <Slider
+              value={localTemperature}
+              onValueChange={setLocalTemperature}
+              onValueCommit={handleTemperatureCommit}
+              min={lamp.state.temperatureMin ?? 0}
+              max={lamp.state.temperatureMax ?? 100}
+              step={1}
+              disabled={!isConnected || !isOn}
+              className="cursor-pointer"
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   )
