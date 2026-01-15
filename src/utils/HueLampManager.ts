@@ -646,6 +646,7 @@ export class HueLampManager {
         `❌ Failed to connect to ${lamp.config.name}:`,
         errorMessage
       );
+      lamp.isConnected = false;
       lamp.isConnecting = false;
       lamp.state.reachable = false;
       lamp.connectionFailures++;
@@ -928,6 +929,20 @@ export class HueLampManager {
       return null;
     }
 
+    // Check peripheral state first - detect disconnects early
+    if (!lamp.peripheral || lamp.peripheral.state !== "connected") {
+      console.log(
+        `🔌 ${lamp.config.name} peripheral disconnected during refresh`
+      );
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      if (!skipConnectionCheck) {
+        this.scheduleReconnect(lampId);
+      }
+      return null;
+    }
+
     try {
       // Read power state
       if (lamp.characteristics.power) {
@@ -958,7 +973,20 @@ export class HueLampManager {
       return lamp.state;
     } catch (error) {
       console.error(`❌ Failed to read state for ${lampId}:`, error);
+
+      // Mark lamp as disconnected when read fails
+      lamp.isConnected = false;
       lamp.state.reachable = false;
+      lamp.characteristics = {};
+
+      console.log(
+        `🔌 ${lamp.config.name} marked as disconnected due to read failure`
+      );
+
+      if (!skipConnectionCheck) {
+        this.scheduleReconnect(lampId);
+      }
+
       return null;
     }
   }
@@ -1282,10 +1310,242 @@ export class HueLampManager {
   }
 
   /**
-   * Trigger a manual scan
+   * Verify the actual connection state of a lamp
+   * This actively checks if BLE communication is possible
+   * @returns true if lamp is actually connected and responsive
+   */
+  private async verifyConnectionState(lampId: string): Promise<boolean> {
+    const lamp = this.lamps.get(lampId);
+    if (!lamp) return false;
+
+    // If not marked as connected, nothing to verify
+    if (!lamp.isConnected) return false;
+
+    // Check peripheral state first
+    if (!lamp.peripheral || lamp.peripheral.state !== "connected") {
+      console.log(
+        `🔌 ${lamp.config.name} peripheral not connected, updating state...`
+      );
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      return false;
+    }
+
+    // Try to read a characteristic to verify the connection is working
+    // Use a timeout to detect unresponsive lamps (e.g., power switch off)
+    const READ_TIMEOUT_MS = 3000;
+    
+    try {
+      const readWithTimeout = async (char: typeof lamp.characteristics.power) => {
+        if (!char) throw new Error("No characteristic");
+        return Promise.race([
+          char.readAsync(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Read timeout")), READ_TIMEOUT_MS)
+          ),
+        ]);
+      };
+
+      if (lamp.characteristics.power) {
+        await readWithTimeout(lamp.characteristics.power);
+        return true;
+      } else if (lamp.characteristics.brightness) {
+        await readWithTimeout(lamp.characteristics.brightness);
+        return true;
+      } else {
+        // No characteristics - try to rediscover
+        console.log(
+          `⚠️ ${lamp.config.name} has no readable characteristics, trying to rediscover...`
+        );
+        await Promise.race([
+          this.discoverCharacteristics(lampId),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Discovery timeout")), READ_TIMEOUT_MS)
+          ),
+        ]);
+        return (
+          lamp.characteristics.power !== undefined ||
+          lamp.characteristics.brightness !== undefined
+        );
+      }
+    } catch (error) {
+      console.log(
+        `🔌 ${lamp.config.name} failed connection verification: ${error}`
+      );
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      
+      // Try to disconnect the peripheral to clean up BLE state
+      try {
+        if (lamp.peripheral && lamp.peripheral.state === "connected") {
+          console.log(`🔌 Force disconnecting stale peripheral for ${lamp.config.name}`);
+          await lamp.peripheral.disconnectAsync();
+        }
+      } catch (disconnectError) {
+        // Ignore disconnect errors
+      }
+      lamp.peripheral = null;
+      
+      return false;
+    }
+  }
+
+  /**
+   * Force refresh a lamp: rediscover characteristics and read all state
+   */
+  private async forceRefreshLamp(lampId: string): Promise<void> {
+    const lamp = this.lamps.get(lampId);
+    if (!lamp || !lamp.peripheral) return;
+
+    // Verify connection first
+    const isConnected = await this.verifyConnectionState(lampId);
+    if (!isConnected) {
+      console.log(`📴 ${lamp.config.name} is not connected, skipping refresh`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 Force refreshing ${lamp.config.name}...`);
+
+      // Rediscover all characteristics
+      await this.discoverCharacteristics(lampId);
+
+      // Re-subscribe to notifications
+      await this.subscribeToNotifications(lampId);
+
+      // Read current state
+      await this.refreshLampState(lampId, true);
+
+      // Read device info
+      await this.readDeviceInfo(lampId);
+
+      console.log(`✅ ${lamp.config.name} force refresh complete`);
+    } catch (error) {
+      console.error(`❌ Failed to force refresh ${lamp.config.name}:`, error);
+      // Mark as disconnected if refresh fails
+      lamp.isConnected = false;
+      lamp.state.reachable = false;
+      lamp.characteristics = {};
+      this.scheduleReconnect(lampId);
+    }
+  }
+
+  /**
+   * Trigger a manual scan with full refresh
+   * This will:
+   * 1. Verify connection state of all lamps (detect disconnects)
+   * 2. Start a BLE scan for new lamps
+   * 3. Force refresh all connected lamps (rediscover characteristics + read state)
+   * 4. Mark lamps not found in scan as disconnected
    */
   async triggerScan(): Promise<void> {
+    console.log("🔍 Manual scan triggered - verifying all connections...");
+
+    // Clear discovered peripherals before scan to get fresh data
+    this.discoveredPeripherals.clear();
+
+    // First, verify connection state of all lamps to detect disconnects
+    const lampsToRefresh: string[] = [];
+    for (const [id, lamp] of this.lamps) {
+      if (lamp.isConnected) {
+        console.log(`🔍 Verifying connection for ${lamp.config.name}...`);
+        const stillConnected = await this.verifyConnectionState(id);
+        if (stillConnected) {
+          console.log(`✅ ${lamp.config.name} is still connected`);
+          lampsToRefresh.push(id);
+        } else {
+          console.log(`❌ ${lamp.config.name} is no longer connected`);
+        }
+      }
+    }
+
+    // Perform BLE scan to discover new lamps
     await this.performScan();
+
+    // Wait a bit for scan to discover peripherals
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    console.log(
+      `📡 Discovered ${this.discoveredPeripherals.size} peripherals during scan`
+    );
+
+    // Check which lamps are in range after scan
+    // IMPORTANT: Only check discoveredPeripherals, not lamp.peripheral (which may be stale)
+    for (const [id, lamp] of this.lamps) {
+      const discoveredPeripheral =
+        this.discoveredPeripherals.get(lamp.config.address) ||
+        this.discoveredPeripherals.get(lamp.config.id);
+
+      const isInRange = discoveredPeripheral !== undefined;
+
+      console.log(
+        `📍 ${lamp.config.name}: isConnected=${lamp.isConnected}, isInRange=${isInRange}`
+      );
+
+      if (lamp.isConnected && !isInRange) {
+        // Lamp was connected but not found in scan - mark as disconnected
+        console.log(
+          `📡 ${lamp.config.name} no longer in range, marking as disconnected`
+        );
+        lamp.isConnected = false;
+        lamp.state.reachable = false;
+        lamp.characteristics = {};
+        // Force disconnect the peripheral if it exists
+        if (lamp.peripheral) {
+          try {
+            await lamp.peripheral.disconnectAsync();
+          } catch (e) {
+            // Ignore disconnect errors
+          }
+        }
+        lamp.peripheral = null;
+      } else if (!lamp.isConnected && !isInRange) {
+        // Lamp was already disconnected and still not in range
+        lamp.state.reachable = false;
+        lamp.peripheral = null;
+      }
+    }
+
+    // Force refresh all still-connected lamps
+    console.log(
+      `🔄 Force refreshing ${lampsToRefresh.length} connected lamps...`
+    );
+    for (const lampId of lampsToRefresh) {
+      // Re-verify the lamp is still connected after range check
+      const lamp = this.lamps.get(lampId);
+      if (lamp?.isConnected) {
+        await this.forceRefreshLamp(lampId);
+      }
+    }
+
+    // Try to connect disconnected lamps that were discovered during scan
+    const disconnectedLamps = Array.from(this.lamps.entries()).filter(
+      ([id, lamp]) => !lamp.isConnected && !lampsToRefresh.includes(id)
+    );
+
+    if (disconnectedLamps.length > 0) {
+      console.log(
+        `🔗 Attempting to connect ${disconnectedLamps.length} disconnected lamps...`
+      );
+      for (const [lampId, lamp] of disconnectedLamps) {
+        // Check if we have a peripheral for this lamp (discovered during scan)
+        const peripheral =
+          lamp.peripheral ||
+          this.discoveredPeripherals.get(lamp.config.address) ||
+          this.discoveredPeripherals.get(lamp.config.id);
+
+        if (peripheral) {
+          console.log(`🔗 Trying to connect to ${lamp.config.name}...`);
+          await this.connectLamp(lampId);
+        } else {
+          console.log(`📡 ${lamp.config.name} not in range`);
+        }
+      }
+    }
+
+    console.log("✅ Manual scan complete");
   }
 
   /**
