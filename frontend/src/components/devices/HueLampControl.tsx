@@ -572,7 +572,7 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
 
         {/* Mini brightness slider */}
         <div className="flex items-center gap-2">
-          <Sun className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+          <Sun className="h-3 w-3 text-muted-foreground shrink-0" />
           <Slider
             value={localBrightness}
             onValueChange={setLocalBrightness}
@@ -588,7 +588,7 @@ export function HueLampCard({ lamp }: HueLampCardProps) {
         {/* Mini temperature slider - only if lamp supports it */}
         {lamp.state.temperature !== null && (
           <div className="flex items-center gap-2">
-            <Thermometer className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <Thermometer className="h-3 w-3 text-muted-foreground shrink-0" />
             <Slider
               value={localTemperature}
               onValueChange={setLocalTemperature}
