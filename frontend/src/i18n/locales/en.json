@@ -258,6 +258,15 @@
     "notFound": "Lamp not found",
     "notConnected": "Lamp not connected",
     "notConnectedDescription": "This lamp is not connected. It may be out of range or powered off.",
-    "lampControl": "Lamp Control"
+    "lampControl": "Lamp Control",
+    "blacklist": "Hide this lamp",
+    "blacklistTitle": "Hide this lamp?",
+    "blacklistDescription": "The lamp \"{{name}}\" will be added to the blacklist and will no longer be displayed. This action will prevent the lamp from being rediscovered during Bluetooth scans.",
+    "blacklistConfirm": "Hide",
+    "blacklistSuccess": "🚫 Lamp hidden",
+    "blacklistSuccessDescription": "The lamp has been added to the blacklist",
+    "blacklistFailed": "Failed to blacklist lamp",
+    "blacklistSection": "Danger zone",
+    "blacklistSectionDescription": "Hide this lamp so it no longer appears in the app. Useful for unknown or unwanted lamps."
   }
 }

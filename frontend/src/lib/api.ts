@@ -7,7 +7,7 @@ interface ApiOptions {
 
 export async function api<T>(
   endpoint: string,
-  options: ApiOptions = {}
+  options: ApiOptions = {},
 ): Promise<T> {
   const token = localStorage.getItem("token");
 
@@ -248,7 +248,7 @@ export const litterBoxApi = {
         reset_sand_level?: boolean;
         reset_factory_settings?: boolean;
       };
-    }
+    },
   ) =>
     api(`/devices/${deviceId}/litter-box/settings`, {
       method: "POST",
@@ -362,5 +362,10 @@ export const hueLampsApi = {
     api(`/hue-lamps/${lampId}/rename`, {
       method: "POST",
       body: { name },
+    }),
+
+  blacklist: (lampId: string) =>
+    api(`/hue-lamps/${lampId}/blacklist`, {
+      method: "POST",
     }),
 };

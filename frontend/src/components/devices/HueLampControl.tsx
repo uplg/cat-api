@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { hueLampsApi, type HueLamp } from '@/lib/api'
 import {
   Card,
@@ -10,6 +10,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
 import {
+  Ban,
   Lightbulb,
   LightbulbOff,
   Loader2,
@@ -33,6 +44,8 @@ interface HueLampControlProps {
 export function HueLampControl({ lampId }: HueLampControlProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [blacklistDialogOpen, setBlacklistDialogOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['hue-lamp', lampId],
@@ -52,6 +65,26 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
   const targetTemperatureRef = useRef<number | null>(null)
   // Cooldown after power toggle to ignore brightness updates
   const powerCooldownRef = useRef<number>(0)
+
+  const blacklistMutation = useMutation({
+    mutationFn: () => hueLampsApi.blacklist(lampId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hue-lamps'] })
+      setBlacklistDialogOpen(false)
+      toast({
+        title: t('hueLamps.blacklistSuccess'),
+        description: t('hueLamps.blacklistSuccessDescription'),
+      })
+      navigate('/')
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('hueLamps.blacklistFailed'),
+        variant: 'destructive',
+      })
+    },
+  })
 
   const powerMutation = useMutation({
     mutationFn: (enabled: boolean) => hueLampsApi.power(lampId, enabled),
@@ -406,6 +439,54 @@ export function HueLampControl({ lampId }: HueLampControlProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Blacklist Button */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-destructive flex items-center gap-2">
+            <Ban className="h-5 w-5" />
+            {t('hueLamps.blacklistSection')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t('hueLamps.blacklistSectionDescription')}
+          </p>
+          <Dialog open={blacklistDialogOpen} onOpenChange={setBlacklistDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive">
+                <Ban className="mr-2 h-4 w-4" />
+                {t('hueLamps.blacklist')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('hueLamps.blacklistTitle')}</DialogTitle>
+                <DialogDescription>
+                  {t('hueLamps.blacklistDescription', { name: lamp.name })}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setBlacklistDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => blacklistMutation.mutate()}
+                  disabled={blacklistMutation.isPending}
+                >
+                  {blacklistMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Ban className="mr-2 h-4 w-4" />
+                  )}
+                  {t('hueLamps.blacklistConfirm')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
     </div>
   )
 }

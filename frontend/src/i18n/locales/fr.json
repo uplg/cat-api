@@ -258,6 +258,15 @@
     "notFound": "Lampe introuvable",
     "notConnected": "Lampe non connectée",
     "notConnectedDescription": "Cette lampe n'est pas connectée. Elle est peut-être hors de portée ou éteinte.",
-    "lampControl": "Contrôle de la lampe"
+    "lampControl": "Contrôle de la lampe",
+    "blacklist": "Masquer cette lampe",
+    "blacklistTitle": "Masquer cette lampe ?",
+    "blacklistDescription": "La lampe \"{{name}}\" sera ajoutée à la liste noire et ne sera plus affichée. Cette action empêchera la lampe d'être redécouverte lors des scans Bluetooth.",
+    "blacklistConfirm": "Masquer",
+    "blacklistSuccess": "🚫 Lampe masquée",
+    "blacklistSuccessDescription": "La lampe a été ajoutée à la liste noire",
+    "blacklistFailed": "Échec de la mise en liste noire",
+    "blacklistSection": "Zone de danger",
+    "blacklistSectionDescription": "Masquer cette lampe pour qu'elle n'apparaisse plus dans l'application. Utile pour les lampes inconnues ou non désirées."
   }
 }
