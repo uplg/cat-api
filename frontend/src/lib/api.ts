@@ -369,3 +369,38 @@ export const hueLampsApi = {
       method: "POST",
     }),
 };
+
+// Tempo types
+export interface TempoTarifs {
+  blue: { hc: number; hp: number };
+  white: { hc: number; hp: number };
+  red: { hc: number; hp: number };
+  dateDebut: string;
+}
+
+export interface TempoData {
+  success: boolean;
+  today?: {
+    date: string;
+    color: "BLUE" | "WHITE" | "RED" | null;
+  };
+  tomorrow?: {
+    date: string;
+    color: "BLUE" | "WHITE" | "RED" | null;
+  };
+  tarifs?: TempoTarifs | null;
+  lastUpdated?: string;
+  cached?: boolean;
+  error?: string;
+  message: string;
+}
+
+// Tempo API (RTE electricity pricing colors)
+export const tempoApi = {
+  get: () => api<TempoData>("/tempo"),
+
+  refresh: () =>
+    api<TempoData>("/tempo/refresh", {
+      method: "POST",
+    }),
+};

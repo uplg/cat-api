@@ -268,5 +268,27 @@
     "blacklistFailed": "Échec de la mise en liste noire",
     "blacklistSection": "Zone de danger",
     "blacklistSectionDescription": "Masquer cette lampe pour qu'elle n'apparaisse plus dans l'application. Utile pour les lampes inconnues ou non désirées."
+  },
+  "tempo": {
+    "title": "Tempo EDF",
+    "subtitle": "Tarification électrique du jour",
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "unknown": "Inconnu",
+    "cached": "Données en cache (API indisponible)",
+    "currentTarif": "Tarif du jour",
+    "allTarifs": "Voir tous les tarifs",
+    "offPeak": "Heures creuses",
+    "peak": "Heures pleines",
+    "colors": {
+      "blue": "Bleu",
+      "white": "Blanc",
+      "red": "Rouge"
+    },
+    "description": {
+      "blue": "Jour le moins cher",
+      "white": "Tarif intermédiaire",
+      "red": "Jour le plus cher"
+    }
   }
 }

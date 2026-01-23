@@ -11,6 +11,7 @@ import { createLitterBoxRoutes } from "./routes/litter-box";
 import { createFountainRoutes } from "./routes/fountain";
 import { createHueLampRoutes } from "./routes/hue-lamps";
 import { createAuthRoutes } from "./routes/auth";
+import { createTempoRoutes } from "./routes/tempo";
 
 dotenv.config();
 
@@ -84,7 +85,7 @@ const app = new Elysia()
       origin: "*",
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
-    })
+    }),
   )
   // 📚 OpenAPI
   .use(
@@ -105,6 +106,10 @@ const app = new Elysia()
             name: "hue-lamps",
             description: "Philips Hue Bluetooth lamp operations",
           },
+          {
+            name: "tempo",
+            description: "RTE Tempo electricity pricing colors",
+          },
         ],
         components: {
           securitySchemes: {
@@ -117,7 +122,7 @@ const app = new Elysia()
         },
         security: [{ bearerAuth: [] }],
       },
-    })
+    }),
   )
   // 🏠 Root Endpoint (public)
   .get("/", () => {
@@ -162,6 +167,8 @@ const app = new Elysia()
         "POST /hue-lamps/:lampId/brightness",
         "POST /hue-lamps/:lampId/state",
         "POST /hue-lamps/:lampId/rename",
+        "GET /tempo",
+        "POST /tempo/refresh",
       ],
     };
   })
@@ -172,7 +179,7 @@ const app = new Elysia()
     jwt({
       name: "jwt",
       secret: JWT_SECRET,
-    })
+    }),
   )
   // 🛡️ Guard - ALL routes after this require authentication
   .guard(
@@ -216,6 +223,7 @@ const app = new Elysia()
         .use(createLitterBoxRoutes(deviceManager))
         .use(createFountainRoutes(deviceManager))
         .use(createHueLampRoutes(() => hueLampManager))
+        .use(createTempoRoutes()),
   );
 
 // 🚀 Server Configuration

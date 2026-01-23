@@ -268,5 +268,27 @@
     "blacklistFailed": "Failed to blacklist lamp",
     "blacklistSection": "Danger zone",
     "blacklistSectionDescription": "Hide this lamp so it no longer appears in the app. Useful for unknown or unwanted lamps."
+  },
+  "tempo": {
+    "title": "Tempo EDF",
+    "subtitle": "Daily electricity pricing",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "unknown": "Unknown",
+    "cached": "Cached data (API unavailable)",
+    "currentTarif": "Today's rate",
+    "allTarifs": "View all rates",
+    "offPeak": "Off-peak",
+    "peak": "Peak",
+    "colors": {
+      "blue": "Blue",
+      "white": "White",
+      "red": "Red"
+    },
+    "description": {
+      "blue": "Cheapest day",
+      "white": "Standard rate",
+      "red": "Most expensive day"
+    }
   }
 }

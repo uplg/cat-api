@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { HueLampCard } from '@/components/devices/HueLampControl'
+import { TempoCard } from '@/components/devices/TempoCard'
 import {
   Utensils,
   Droplets,
@@ -274,6 +275,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <TempoCard />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">{t('dashboard.title')}</h1>
